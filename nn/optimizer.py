@@ -1,4 +1,4 @@
-from src.base import Optimizer
+from nn.base import Optimizer
 
 
 # TODO: add momentum, is_nesterov

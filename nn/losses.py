@@ -1,4 +1,4 @@
-from src.base import Module
+from nn.base import Module
 
 
 class Softmax(Module):
