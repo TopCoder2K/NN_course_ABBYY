@@ -68,3 +68,4 @@ urllib3==1.26.2
 wcwidth==0.2.5
 webencodings==0.5.1
 scikit-learn==0.24.1
+torch~=1.7.1+cpu

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-import numpy as np, pandas as pd, matplotlib.pyplot as plt
+import numpy as np
 
 
 # TODO: стоит ли использовать raise NotImplementedError внутри абстрактного метода?
@@ -17,6 +17,7 @@ class Module(ABC):
         каждому слою нужен градиент по выходу этого слоя. Но выход этого слоя есть вход для следующего слоя,
         поэтому логично возвращать градиент по входу и передавать его далее.
     """
+
     def __init__(self):
         self.output = None
         self.grad_input = None
@@ -51,11 +52,12 @@ class Module(ABC):
         return self.grad_input
 
     # TODO: нужно ли возвращать градиент?
-    @abstractmethod
     def update_layer_input_grad(self, module_input, grad_output):
         """
         Вычисляет градиент функции слоя по входу и возвращает его в виде `self.grad_input`.
         Размер (`shape`) поля `self.grad_input` всегда совпадает с размером `input`.
+
+        Тоже не абстрактный, так как для самой модели он не нужен.
 
         Параметры
         ---------
@@ -68,7 +70,7 @@ class Module(ABC):
         `self.grad_input` : torch.tensor
             Вычисленный градиент функции слоя по входу
         """
-        raise NotImplementedError
+        pass
 
     def update_params_grad(self, module_input, grad_output):
         """
@@ -90,10 +92,28 @@ class Module(ABC):
         """Зануляет градиенты у параметров слоя (если они есть). Нужно для оптимизатора."""
         raise NotImplementedError
 
-    @abstractmethod
-    def apply_grad(self):
-        """?????????????????????????"""
-        raise NotImplementedError
+    @property
+    def parameters(self):
+        """
+        Возвращает список параметров этого слоя, если они есть. Иначе возвращает пустой список.
+        Нужно для оптимизатора.
+        """
+
+        return []
+
+    @property
+    def grad_params(self):
+        """
+        Возвращает список градиентов функции этого слоя по параметрам этого слоя, если они есть. 
+        Иначе возвращает пустой список. Нужно для оптимизатора.
+        """
+
+        return []
+
+    # @abstractmethod
+    # def apply_grad(self):
+    #     """TODO: ?????????????????????????"""
+    #     raise NotImplementedError
 
 
 class Optimizer(ABC):
@@ -107,13 +127,13 @@ class Optimizer(ABC):
     `state` :  dict
         Словарь cо состоянием оптимизатора. Нужен, чтобы сохранять старые значения градиентов.
     """
+
     def __init__(self, *args):
         self.config = defaultdict(np.float64)
         self.state = defaultdict(np.float64)
 
     @abstractmethod
     def step(self, weights, grad):
-
         raise NotImplementedError
 
 
