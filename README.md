@@ -1,2 +1,11 @@
 Пояснение по линейному слою.
-![LinearLayer.png](LinearLayer.png)
+![img.png](LinearLayer.png)
+
+Пояснение по функциям активации.
+1) ReLU.
+   ![img.png](ReLU.png)
+2) Sigmoid.
+   ![img.png](Sigmoid.png)
+   
+Пояснение по лоссам.
+

@@ -6,7 +6,7 @@ import torch
 
 def get_line(line=None, n_points=64, sigma=0.05, seed=1):
     if line is None:  # default line: y = \pi * x + 0
-        line = np.asarray([-np.pi, 1, 0])   # TODO: why 3 points?
+        line = np.asarray([-np.pi, 1, 0])
 
     nr.seed(seed)
     points = np.zeros((2, n_points), dtype=np.float32)
@@ -14,7 +14,7 @@ def get_line(line=None, n_points=64, sigma=0.05, seed=1):
     points[1] = -(line[0] * points[0] + line[2]) / line[1]  # line
     points += nr.randn(2, n_points) * sigma  # Gaussian noise
     # plt.plot(points[0], points[1], '.')
-    return torch.tensor(points, dtype=torch.float).T.split([1, 1], dim=1)
+    return torch.tensor(points, dtype=torch.float).T.split([1, 1], dim=1)   # TODO: why [1, 1]?
 
 
 def get_iris():

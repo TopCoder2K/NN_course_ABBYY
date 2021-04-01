@@ -3,7 +3,6 @@ from collections import defaultdict
 import numpy as np
 
 
-# TODO: стоит ли использовать raise NotImplementedError внутри абстрактного метода?
 class Module(ABC):
     """
     Абстрактный класс модуля. Именно из модулей будет состоять нейронная сеть.
@@ -23,9 +22,9 @@ class Module(ABC):
         self.grad_input = None
 
     @abstractmethod
-    def forward(self, *args):
+    def forward(self, module_input):
         """Вычисляет операцию слоя."""
-        raise NotImplementedError
+        pass
 
     def __call__(self, *args):
         return self.forward(*args)
@@ -47,16 +46,15 @@ class Module(ABC):
             Градиент функции слоя по входу.
         """
 
-        self.update_layer_input_grad(module_input, grad_output)
+        self.update_module_input_grad(module_input, grad_output)
         self.update_params_grad(module_input, grad_output)
         return self.grad_input
 
     # TODO: нужно ли возвращать градиент?
-    def update_layer_input_grad(self, module_input, grad_output):
+    def update_module_input_grad(self, module_input, grad_output):
         """
         Вычисляет градиент функции слоя по входу и возвращает его в виде `self.grad_input`.
         Размер (`shape`) поля `self.grad_input` всегда совпадает с размером `input`.
-
         Тоже не абстрактный, так как для самой модели он не нужен.
 
         Параметры
@@ -76,7 +74,7 @@ class Module(ABC):
         """
         Вычисляет градиент функции слоя по параметрам (весам) этого слоя.
         Ничего не возвращает, только сохраняет значения градиентов в соответствующие поля.
-        Так как не у всех слоёв есть параметры, этот метод необязательный.
+        Так как не у всех слоёв есть параметры, этот метод необязательный к переопределению.
 
         Параметры
         ---------
@@ -87,10 +85,9 @@ class Module(ABC):
         """
         pass
 
-    @abstractmethod
     def zero_grad(self):
         """Зануляет градиенты у параметров слоя (если они есть). Нужно для оптимизатора."""
-        raise NotImplementedError
+        pass
 
     @property
     def parameters(self):
@@ -134,7 +131,17 @@ class Optimizer(ABC):
 
     @abstractmethod
     def step(self, weights, grad):
-        raise NotImplementedError
+        """
+        Делает один шаг в соответствии с алгоритмом оптимизации.
+
+        Параметры
+        ---------
+        `weights` : torch.tensor
+            Веса (параметры) модели.
+        `grad` : torch.tensor
+            Градиент функции риска по весам (параметрам) модели.
+        """
+        pass
 
 
 # class Model(Module, ABC):
@@ -161,5 +168,19 @@ class Model(Module, ABC):
         self.optimizer = optimizer
 
     @abstractmethod
-    def train(self, data, n_epochs):
-        raise NotImplementedError
+    def train(self, data_train, n_epochs):
+        """
+        Функция для обучения модели. По-хорошему должна принимать ещё батч генератор, но пока без него.
+
+        Параметры
+        ---------
+        `data_train` : array like, shape=(1, 2)
+            Набор данных для обучения. Содержит в себе 2 тензора: признаковые описания и целевую переменную.
+        `n_epochs` : integer
+            Число эпох обучения.
+        Возращает
+        ---------
+        `loss_history` : list
+            Все значения лосса в процессе обучения.
+        """
+        pass

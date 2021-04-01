@@ -11,7 +11,7 @@ def main():
     torch.manual_seed(1)
     data = get_line(seed=1)
 
-    model = FeedForwardModel(
+    custom_model = FeedForwardModel(
         layers=[
             FullyConnectedLayer(
                 1, 1, bias=False,
@@ -21,7 +21,9 @@ def main():
         loss=MSE(),
         optimizer=GradientDescend(lr=0.3)
     )
-    model.train(data, n_epochs=20)
+    custom_model.train(data, n_epochs=20)
+
+    print(custom_model.parameters)
 
 
 if __name__ == '__main__':

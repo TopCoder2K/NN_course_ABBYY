@@ -94,21 +94,6 @@ class FeedForwardModel(Model):
     #     raise NotImplementedError  # TODO: replace line with your implementation
 
     def train(self, data_train, n_epochs):
-        """
-        Функция для обучения модели. По-хорошему должна принимать ещё батч генератор, но пока без него.
-
-        Параметры
-        ---------
-        `data_train` : torch.tensor
-            Набор данных для обучения.
-        `n_epochs` : integer
-            Число эпох обучения.
-        Возращает
-        ---------
-        `loss_history` : list
-            Все значения лосса в процессе обучения.
-        """
-
         x_train, y_train = data_train
         loss_history = []
 
