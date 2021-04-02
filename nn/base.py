@@ -7,7 +7,7 @@ class Module(ABC):
     """
     Абстрактный класс модуля. Именно из модулей будет состоять нейронная сеть.
 
-    Аттрибуты
+    Атрибуты
     ---------
     `output` : torch.tensor
         Выход слоя.
@@ -22,7 +22,7 @@ class Module(ABC):
         self.grad_input = None
 
     @abstractmethod
-    def forward(self, module_input):
+    def forward(self, *args):
         """Вычисляет операцию слоя."""
         pass
 
@@ -109,7 +109,7 @@ class Module(ABC):
 
     # @abstractmethod
     # def apply_grad(self):
-    #     """TODO: ?????????????????????????"""
+    #     """?????????????????????????"""
     #     raise NotImplementedError
 
 
@@ -117,8 +117,8 @@ class Optimizer(ABC):
     """
     Абстрактный класс оптимизатора.
 
-    Аттрибуты
-    ---------
+    Атрибуты
+    --------
     `config` : dict
         Словарь c гиперпараметрами оптимизатора. Например, `learning_rate` и `momentum` для SGD с Momentum.
     `state` :  dict
@@ -127,19 +127,19 @@ class Optimizer(ABC):
 
     def __init__(self, *args):
         self.config = defaultdict(np.float64)
-        self.state = defaultdict(np.float64)
+        self.state = {}
 
     @abstractmethod
-    def step(self, weights, grad):
+    def step(self, params, params_grad):
         """
         Делает один шаг в соответствии с алгоритмом оптимизации.
 
         Параметры
         ---------
-        `weights` : torch.tensor
-            Веса (параметры) модели.
-        `grad` : torch.tensor
-            Градиент функции риска по весам (параметрам) модели.
+        `params` : torch.tensor
+            Параметры (еса) модели.
+        `params_grad` : torch.tensor
+            Градиент функции риска по параметрам (весам) модели.
         """
         pass
 

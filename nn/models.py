@@ -6,8 +6,8 @@ class FeedForwardModel(Model):
     Этот класс является последовательностью слоёв.
     Последовательно обрабатывает вход `model_input` от слоя к слою.
 
-    Аттрибуты
-    ---------
+    Атрибуты
+    --------
     `layers` : list
         Список всех слоёв модели.
     `loss` : callable
@@ -91,7 +91,7 @@ class FeedForwardModel(Model):
         return [layer.grad_params for layer in self.layers]
 
     # def apply_grad(self):
-    #     raise NotImplementedError  # TODO: replace line with your implementation
+    #     raise NotImplementedError
 
     def train(self, data_train, n_epochs):
         x_train, y_train = data_train

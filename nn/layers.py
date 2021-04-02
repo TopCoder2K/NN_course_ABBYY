@@ -8,8 +8,8 @@ class FullyConnectedLayer(Module):
     """
     Слой, осуществляющий линейное преобразоваие: Y = X @ W + b, Y \in R^{N x n_out}, X \in R^{N, n_in}.
 
-    Аттрибуты
-    ---------
+    Атрибуты
+    --------
     `W` : torch.tensor, shape=(in_features, out_features)
         Матрица размера (in_features, out_features), где в данном случае in_features равно числу признаков,
         а out_features равно количеству нейронов в слое.
@@ -34,7 +34,7 @@ class FullyConnectedLayer(Module):
         `init` : torch.tensor с shape=(in_features, out_features) или array like из тензоров с shape=(1, 2)
             Содержит значения, которыми иницализируются параметры слоя. Если ```bias == True```, то содержит в себе
             два тензора: начальные значения для W и b соответственно.
-        `optimizer` : ???????????????????
+        `optimizer` : ??????????????????? TODO
         """
         super(FullyConnectedLayer, self).__init__()
 
@@ -84,4 +84,9 @@ class FullyConnectedLayer(Module):
         return [self.gradW, self.gradb]
 
     # def apply_grad(self):
-    #     raise NotImplementedError  # TODO: replace line with your code
+    #     raise NotImplementedError
+
+
+class Softmax(Module):
+    """?????????????????"""
+    pass  # TODO: replace line with your code
