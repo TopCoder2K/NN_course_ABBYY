@@ -54,8 +54,8 @@ class FullyConnectedLayer(Module):
         self.gradW = torch.full((out_features, in_features), fill_value=0.)
         self.gradb = torch.full((list(self.W.shape)[-1], 1), fill_value=0.)
 
-    def forward(self, x):
-        self.output = torch.dot(self.W, x)
+    def forward(self, module_input):
+        self.output = torch.dot(self.W, module_input)
         if self.b is not None:
             self.output += self.b
 
@@ -88,5 +88,22 @@ class FullyConnectedLayer(Module):
 
 
 class Softmax(Module):
-    """?????????????????"""
-    pass  # TODO: replace line with your code
+    """Осуществляет softmax-преобразование. Подробности по формулам см. в README.md."""
+
+    def forward(self, module_input):
+        # Нормализуем для численной устойчивости
+        self.output = np.exp(module_input - module_input.max(dim=1, keepdims=True))
+        self.output /= self.output.sum(dim=1).reshape(-1, 1)
+
+        return self.output
+
+    # TODO: попробовать сделать без циклов, но это непросто.........
+    def update_module_input_grad(self, module_input, grad_output):
+        for i in range(self.output.shape[0]):
+            softmax_i = self.output[i, :]
+            partial_softmax = -torch.matmul(softmax_i.T, softmax_i) + torch.diag(softmax_i)
+            for j in range(self.output.shape[1]):
+                self.grad_input[i, j] = torch.mul(grad_output[i, :], partial_softmax[:, j])
+
+        return self.grad_input
+

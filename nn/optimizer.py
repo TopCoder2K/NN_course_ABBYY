@@ -1,3 +1,5 @@
+import torch
+
 from nn.base import Optimizer
 
 
@@ -20,16 +22,16 @@ class GradientDescend(Optimizer):
         self.config['is_nesterov'] = is_nesterov
         self.state.setdefault('accumulated_grads', {})
 
-
     def step(self, params, params_grad):
-        var_index = 0
-        for current_layer_vars, current_layer_grads in zip(variables, gradients):
-            for current_var, current_grad in zip(current_layer_vars, current_layer_grads):
-                state['accumulated_grads'].setdefault(var_index, np.zeros_like(current_grad))
-                state['accumulated_grads'][var_index] = \
-                    config['momentum'] * state['accumulated_grads'][var_index] + \
-                    config['learning_rate'] * current_grad
+        var_index = 0   # Для каждого параметра будет своя ячейка с аккумулированными градиентами
 
-                current_var -= state['accumulated_grads'][var_index]
+        for current_layer_vars, current_layer_grads in zip(params, params_grad):
+            for current_var, current_grad in zip(current_layer_vars, current_layer_grads):
+                self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))
+
+                self.state['accumulated_grads'][var_index] = \
+                    self.config['momentum'] * self.state['accumulated_grads'][var_index] + \
+                    self.config['learning_rate'] * current_grad
+                current_var -= self.state['accumulated_grads'][var_index]
 
                 var_index += 1
