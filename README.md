@@ -1,25 +1,25 @@
 Пояснение по слоям
 1) Линейный слой.
-   ![img.png](LinearLayer.png)
+   ![LinearLayer](LinearLayer.png)
    
 2) SoftMax слой.
-   ![img.png](SoftMax1.png)
-   ![img.png](SoftMax2.png)
+   ![SoftMax1](SoftMax1.png)
+   ![SoftMax2](SoftMax2.png)
 
 
 Пояснение по функциям активации.
 1) ReLU.
-   ![img.png](ReLU.png)
+   ![ReLU](ReLU.png)
    
 2) Sigmoid.
-   ![img.png](Sigmoid.png)
+   ![Sigmoid](Sigmoid.png)
    
 Пояснение по лоссам.
 1) MSE loss.
-   ![img.png](MSE.png)
+   ![MSE](MSE.png)
    
 2) Cross-entropy loss (NLL loss).
-   ![img.png](CrossEntropy.png)
+   ![CrossEntropy](CrossEntropy.png)
    
 3) Kullback-Leibler divergence loss.
    Отличается от Cross-entropy loss только лишь на энтропию истинного распределения.
