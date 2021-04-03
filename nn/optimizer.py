@@ -27,11 +27,12 @@ class GradientDescend(Optimizer):
 
         for current_layer_vars, current_layer_grads in zip(params, params_grad):
             for current_var, current_grad in zip(current_layer_vars, current_layer_grads):
-                self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))
+                if current_var is not None:
+                    self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))
 
-                self.state['accumulated_grads'][var_index] = \
-                    self.config['momentum'] * self.state['accumulated_grads'][var_index] + \
-                    self.config['learning_rate'] * current_grad
-                current_var -= self.state['accumulated_grads'][var_index]
+                    self.state['accumulated_grads'][var_index] = \
+                        self.config['momentum'] * self.state['accumulated_grads'][var_index] + \
+                        self.config['lr'] * current_grad
+                    current_var -= self.state['accumulated_grads'][var_index]
 
-                var_index += 1
+                    var_index += 1

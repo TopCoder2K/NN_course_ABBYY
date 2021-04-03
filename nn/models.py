@@ -38,13 +38,13 @@ class FeedForwardModel(Model):
             Выход модели.
         """
 
-        output = model_input.copy()
+        output = model_input.detach().clone()
 
         for layer in self.layers:
             output = layer.forward(output)
             layer.output = output
 
-        self.output = output    # TODO: а это вообще нужно?
+        self.output = output    # Кажется, это не особо нужно, но оставим для выполнения "модульной" семантики
         return output
 
     def backward(self, model_input, grad_output):
@@ -63,16 +63,16 @@ class FeedForwardModel(Model):
             Градиент лосса по весам модели.
         """
 
-        g = grad_output.copy()
+        g = grad_output.detach().clone()
 
         # Проходим с конца до 0-го НЕвключительно
         for i in range(1, len(self.layers)):
             g = self.layers[-i].backward(self.layers[-i - 1].output, g)
 
-        self.grad_input = self.layers[0].backward(input, g)
+        self.grad_input = self.layers[0].backward(model_input, g)
         return self.grad_input
 
-    def zero_grad(self):
+    def zero_grad_params(self):
         """Зануляет градиенты у всех слоёв."""
 
         for layer in self.layers:

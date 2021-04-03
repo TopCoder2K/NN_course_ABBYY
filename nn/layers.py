@@ -21,7 +21,7 @@ class FullyConnectedLayer(Module):
         Хранит градиент вектора свободных членов.
     """
 
-    def __init__(self, in_features, out_features, bias=True, init=None, optimizer=None):
+    def __init__(self, in_features, out_features, bias=True, init=None):
         """
         Параметры
         ---------
@@ -31,31 +31,27 @@ class FullyConnectedLayer(Module):
             Число фич у выхода слоя.
         `bias` : boolean
             Нужен ли bias?
-        `init` : torch.tensor с shape=(in_features, out_features) или array like из тензоров с shape=(1, 2)
-            Содержит значения, которыми иницализируются параметры слоя. Если ```bias == True```, то содержит в себе
-            два тензора: начальные значения для W и b соответственно.
-        `optimizer` : ??????????????????? TODO
+        `init` : torch.tensor с shape=(in_features, out_features)
+            Содержит значения, которыми иницализируются веса слоя. Заметим, что в реализации pytorch
+            bias не инициализируется извне, у нас тоже не будет.
         """
         super(FullyConnectedLayer, self).__init__()
+        self.b = None
+        self.W = None
 
         if init is not None:
-            if bias:
-                self.W, self.b = init
-            else:
-                self.W = init
+            self.W = init
         else:
             stdv = 1. / np.sqrt(in_features)
             self.W = torch.tensor(np.random.uniform(-stdv, stdv, size=(in_features, out_features)))
             if bias:
                 self.b = torch.tensor(np.random.uniform(-stdv, stdv, size=out_features))
-            else:
-                self.b = None
 
         self.gradW = torch.full((out_features, in_features), fill_value=0.)
         self.gradb = torch.full((list(self.W.shape)[-1], 1), fill_value=0.)
 
     def forward(self, module_input):
-        self.output = torch.dot(self.W, module_input)
+        self.output = torch.matmul(module_input, self.W)
         if self.b is not None:
             self.output += self.b
 
@@ -66,14 +62,13 @@ class FullyConnectedLayer(Module):
         self.gradb = torch.zeros(self.gradb.shape)
 
     def update_module_input_grad(self, module_input, grad_output):
-        self.grad_input = grad_output @ self.W.T
+        self.grad_input = grad_output @ self.W.transpose(dim0=0, dim1=1)
         return self.grad_input
 
     def update_params_grad(self, module_input, grad_output):
-        self.gradW = torch.dot(module_input.T, grad_output)
-        self.gradb = torch.sum(grad_output, dim=0)
-
-        assert self.gradb.shape == self.b.shape
+        self.gradW = torch.matmul(module_input.transpose(dim0=0, dim1=1), grad_output)
+        if self.b is not None:
+            self.gradb = torch.sum(grad_output, dim=0)
 
     @property
     def parameters(self):
@@ -101,7 +96,7 @@ class Softmax(Module):
     def update_module_input_grad(self, module_input, grad_output):
         for i in range(self.output.shape[0]):
             softmax_i = self.output[i, :]
-            partial_softmax = -torch.matmul(softmax_i.T, softmax_i) + torch.diag(softmax_i)
+            partial_softmax = -torch.matmul(softmax_i.transpose(dim0=0, dim1=1), softmax_i) + torch.diag(softmax_i)
             for j in range(self.output.shape[1]):
                 self.grad_input[i, j] = torch.mul(grad_output[i, :], partial_softmax[:, j])
 

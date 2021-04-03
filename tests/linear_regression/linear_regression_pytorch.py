@@ -20,7 +20,8 @@ def main():
         loss.backward()
         optimizer.step()
 
-    print(torch_model.parameters())
+    for param in torch_model.parameters():
+        print(param)
 
 
 if __name__ == '__main__':
