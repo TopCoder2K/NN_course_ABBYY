@@ -7,7 +7,7 @@ from nn.base import Module
 class Loss(Module):
     """
     Абстрактный класс для лосса.
-    Нужен, так как у лоссов другая семантика вызова ```forward()``` и ```backward()```.
+    Нужен, так как у лоссов другая семантика вызова `forward()` и `backward()`.
 
     Атрибуты
     --------
@@ -15,19 +15,7 @@ class Loss(Module):
         Выход лосса.
     `grad_input` : torch.tensor
         Градиент по входу функции потерь.
-    `l1` : float
-        Параметр L1-регуляризации.
-    `l2` : float
-        Параметр L2-регуляризации.
-    `params` : torch.tensor
-         Параметры модели. Нужны только если заданы l1 или l2.
     """
-
-    def __init__(self, l1=None, l2=None, params=None):
-        super(Loss, self).__init__()
-        self.l1 = l1
-        self.l2 = l2
-        self.params = params
 
     @abstractmethod
     def forward(self, y_pred, y_true):
@@ -70,33 +58,9 @@ class Loss(Module):
     def update_module_input_grad(self, y_pred, y_true):
         pass
 
-    # TODO: эта логика должна быть в оптимизаторе, потому что он применяет градиенты по параметрам.
-    # def _add_regularization(self):
-    #     # L1-регуляризация
-    #     if self.l1 is not None:
-    #         if self.params is None:
-    #             raise RuntimeError('If regularization is used, the parameters must be passed.')
-    #         for current_layer_vars in self.params:
-    #             for current_var in current_layer_vars:
-    #                 self.output += self.l1 * torch.abs(current_var).sum()
-    #
-    #     # L2-регуляризация
-    #     if self.l2 is not None:
-    #         if self.params is None:
-    #             raise RuntimeError('If regularization is used, the parameters must be passed.')
-    #         for current_layer_vars in self.params:
-    #             for current_var in current_layer_vars:
-    #                 self.output += self.l2 * torch.square(current_var).sum()
-    #
-    # def _add_regularization_grad(self):
-    #     if self.l1 is not None:
-    #         self.grad_input += self.l1 * torch.mul(torch.diag(torch.ones(size=self.grad_input.shape)), torch.sgn(self.params))
-    #     if self.l2 is not None:
-    #         self.grad_input += 2 * self.l2 * self.params
-
 
 class MSE(Loss):
-    """Обычная MSE. Подробности см. в README.md.
+    """Обычная MSE. Подробности по формулам см. в README.md.
 
     Атрибуты
     --------
@@ -104,30 +68,22 @@ class MSE(Loss):
         Выход лосса.
     `grad_input` : torch.tensor
         Градиент по входу функции потерь.
-    `l1` : float
-        Параметр L1-регуляризации.
-    `l2` : float
-        Параметр L2-регуляризации.
-    `params` : torch.tensor
-         Параметры модели. Нужны только если заданы l1 или l2.
     """
 
     def forward(self, y_pred, y_true):
         self.output = torch.sum((y_pred - y_true)**2) / y_true.nelement()
-        # self._add_regularization()
 
         return self.output
 
     def update_module_input_grad(self, y_pred, y_true):
         self.grad_input = 2. / y_true.nelement() * (y_pred - y_true)
-        # self._add_regularization_grad()
 
         return self.grad_input
 
 
 class CrossEntropy(Loss):
     """
-    Функция риска 'перекрёстная энтропия'. В ```forward``` принимает на вход истинные и предсказанные вероятности
+    Функция риска 'перекрёстная энтропия'. В `forward()` принимает на вход истинные и предсказанные вероятности
     принадлежности к классам. Подробности по формулам см. в README.md.
 
     Атрибуты
@@ -136,12 +92,6 @@ class CrossEntropy(Loss):
         Выход лосса.
     `grad_input` : torch.tensor
         Градиент по входу функции потерь.
-    `l1` : float
-        Параметр L1-регуляризации.
-    `l2` : float
-        Параметр L2-регуляризации.
-    `params` : torch.tensor
-         Параметры модели. Нужны только если заданы l1 или l2.
     """
 
     EPS = 1e-15  # Для стабильности работы логарифма и деления при нулевых вероятностях.
@@ -170,12 +120,6 @@ class KLDivergence(Loss):
         Выход лосса.
     `grad_input` : torch.tensor
         Градиент по входу функции потерь.
-    `l1` : float
-        Параметр L1-регуляризации.
-    `l2` : float
-        Параметр L2-регуляризации.
-    `params` : torch.tensor
-         Параметры модели. Нужны только если заданы l1 или l2.
     """
 
     EPS = 1e-15  # Для стабильности работы логарифма и деления при нулевых вероятностях.

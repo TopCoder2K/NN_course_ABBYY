@@ -10,15 +10,28 @@ class GradientDescend(Optimizer):
     Атрибуты
     --------
     `config` : dict
-        Словарь c гиперпараметрами оптимизатора. Для SGD следующие параметры:
-        `learning_rate`, `momentum` для SGD с Momentum, `is_nesterov` для использования момента Нестерова.
-    `state` :  dict
+        Словарь c гиперпараметрами оптимизатора.
+    `state` : dict
         Словарь cо состоянием оптимизатора. Нужен, чтобы сохранять старые значения градиентов.
     """
 
-    def __init__(self, lr=0.01, momentum=0., is_nesterov=False):
-        super(GradientDescend, self).__init__()
-        self.config['lr'] = lr
+    def __init__(self, lr=0.01, l1=None, l2=None, momentum=0., is_nesterov=False):
+        """
+        Параметры
+        ---------
+        `lr` : float
+            Шаг обучения.
+        `l1` : float
+            Параметр L1-регуляризации.
+        `l2` : float
+            Параметр L2-регуляризации.
+        `momentum` : float
+            Параметр для метода 'Momentum'
+        `is_nesterov` : boolean
+            Использовать ли момент Нестерова?
+        """
+
+        super(GradientDescend, self).__init__(lr, l1, l2)
         self.config['momentum'] = momentum
         self.config['is_nesterov'] = is_nesterov
         self.state.setdefault('accumulated_grads', {})
@@ -36,6 +49,9 @@ class GradientDescend(Optimizer):
                     except KeyError:
                         self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))
 
+                    # Добавляем регуляризацию, если нужно
+                    self._add_regularization_grad(params, current_grad)
+
                     self.state['accumulated_grads'][var_index] = \
                         self.config['momentum'] * self.state['accumulated_grads'][var_index] + \
                         self.config['lr'] * current_grad
@@ -52,8 +68,8 @@ class Adam(Optimizer):
     --------
     `config` : dict
         Словарь c гиперпараметрами оптимизатора. Для Адама следующие параметры:
-         `learning_rate`, `beta1` и `beta2` для экспоненциального сглаживания,
-         `eps` для добавления в знаменатель при делении.
+        `learning_rate`, `beta1` и `beta2` для экспоненциального сглаживания,
+        `eps` для добавления в знаменатель при делении.
     `state` :  dict
         Словарь cо состоянием оптимизатора. Нужен, чтобы сохранять значения параметров m_t, v_t, а также степеней
         \beta_1, \beta_2 (обозначения как в оригинальной статье).

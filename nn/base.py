@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-import numpy as np
+import torch
 
 
 class Module(ABC):
@@ -120,14 +120,49 @@ class Optimizer(ABC):
     Атрибуты
     --------
     `config` : dict
-        Словарь c гиперпараметрами оптимизатора. Например, `learning_rate` и `momentum` для SGD с Momentum.
-    `state` :  dict
+        Словарь c гиперпараметрами оптимизатора. Дефолтно имеет три гиперпараметра: learning rate,
+        параметр L1-регуляризации, параметр L2-регуляризации.
+    `state` : dict
         Словарь cо состоянием оптимизатора. Нужен, чтобы сохранять старые значения градиентов.
     """
 
-    def __init__(self, *args):
-        self.config = defaultdict(np.float64)
+    def __init__(self, lr=0.01, l1=None, l2=None):
+        """
+        Параметры
+        ---------
+        `lr` : float
+            Шаг обучения.
+        `l1` : float
+            Параметр L1-регуляризации.
+        `l2` : float
+            Параметр L2-регуляризации.
+        """
+
+        self.config = defaultdict(float)
+        self.config['lr'] = lr
+        self.config['l1'] = l1
+        self.config['l2'] = l2
         self.state = {}
+
+    def _add_regularization_grad(self, params, params_grad):
+        """
+        Если задана регуляризация, изменяет градиенты параметров соответствующим образом.
+        Так как вся логика работы с регуляризацией будет в оптимизаторе, значения лосса будут как бы ненастоящими,
+        но нам и не важно, так как обычно играют роль относительные изменения лосса.
+
+        Параметры
+        ---------
+        `params` : torch.tensor
+            Параметры модели.
+        `params_grad` : torch.tensor
+            Градиент функции потерь по параметрам модели.
+        """
+
+        if self.config['l1'] is not None:
+            params_grad += self.config['l1'] * torch.sgn(params)
+
+        if self.config['l2'] is not None:
+            params_grad += 2 * self.config['l2'] * params
 
     @abstractmethod
     def step(self, params, params_grad):
@@ -137,7 +172,7 @@ class Optimizer(ABC):
         Параметры
         ---------
         `params` : torch.tensor
-            Параметры (еса) модели.
+            Параметры (веса) модели.
         `params_grad` : torch.tensor
             Градиент функции риска по параметрам (весам) модели.
         """

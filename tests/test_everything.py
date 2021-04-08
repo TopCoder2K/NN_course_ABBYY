@@ -352,7 +352,7 @@ class TestLayers(unittest.TestCase):
     def test_KLDivergence(self):
         raise NotImplementedError
 
-    def test_MSE_with_Regularization(self):
+    def test_MSE_with_regularization(self):
         raise NotImplementedError
     #     torch.manual_seed(RANDOM_SEED)
     #     batch_size, n_in, n_out = 2, 3, 4
