@@ -10,18 +10,19 @@ class Sigmoid(Module):
         super(Sigmoid, self).__init__()
 
     def forward(self, module_input):
-        # Заметим, что при больших значениях аргумента переполняться будет e^x, а при сильно отрицательных значениях
-        # --- e^{-x}, поэтому имеем смысл сделать разветвление.
+        # Заметим, что при больших значениях аргумента переполняться будет e^x,
+        # а при сильно отрицательных значениях --- e^{-x}, поэтому имеем смысл сделать разветвление.
         positive = module_input >= 0
         negative = ~positive
 
         self.output = torch.empty(module_input.shape)
         self.output[positive] = 1. / (1. + torch.exp(-module_input[positive]))
-        self.output[negative] = torch.exp(module_input[negative]) / (1. + torch.exp(module_input[positive]))
+        self.output[negative] = torch.exp(module_input[negative]) / (1. + torch.exp(module_input[negative]))
         return self.output
 
     def update_module_input_grad(self, module_input, grad_output):
-        return grad_output.mul(self.output.mul(1 - self.output))
+        self.grad_input = grad_output.mul(self.output.mul(1 - self.output))
+        return self.grad_input
 
 
 class ReLU(Module):

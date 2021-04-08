@@ -40,15 +40,15 @@ class FullyConnectedLayer(Module):
         self.W = None
 
         if init is not None:
-            self.W = init
+            self.W = init.clone().detach()
         else:
             stdv = 1. / np.sqrt(in_features)
-            self.W = torch.tensor(np.random.uniform(-stdv, stdv, size=(in_features, out_features)))
+            self.W = torch.tensor(np.random.uniform(-stdv, stdv, size=(in_features, out_features)), dtype=torch.float)
             if bias:
-                self.b = torch.tensor(np.random.uniform(-stdv, stdv, size=out_features))
+                self.b = torch.tensor(np.random.uniform(-stdv, stdv, size=out_features), dtype=torch.float)
 
-        self.gradW = torch.full((out_features, in_features), fill_value=0.)
-        self.gradb = torch.full((list(self.W.shape)[-1], 1), fill_value=0.)
+        self.gradW = torch.full((out_features, in_features), fill_value=0., dtype=torch.float)
+        self.gradb = torch.full((list(self.W.shape)[-1], 1), fill_value=0., dtype=torch.float)
 
     def forward(self, module_input):
         self.output = torch.matmul(module_input, self.W)
@@ -62,11 +62,11 @@ class FullyConnectedLayer(Module):
         self.gradb = torch.zeros(self.gradb.shape)
 
     def update_module_input_grad(self, module_input, grad_output):
-        self.grad_input = grad_output @ self.W.transpose(dim0=0, dim1=1)
+        self.grad_input = grad_output @ self.W.t()
         return self.grad_input
 
     def update_params_grad(self, module_input, grad_output):
-        self.gradW = torch.matmul(module_input.transpose(dim0=0, dim1=1), grad_output)
+        self.gradW = torch.matmul(module_input.t(), grad_output)
         if self.b is not None:
             self.gradb = torch.sum(grad_output, dim=0)
 
@@ -85,20 +85,27 @@ class FullyConnectedLayer(Module):
 class Softmax(Module):
     """Осуществляет softmax-преобразование. Подробности по формулам см. в README.md."""
 
+    def __init__(self):
+        super(Softmax, self).__init__()
+
     def forward(self, module_input):
-        # Нормализуем для численной устойчивости
-        self.output = np.exp(module_input - module_input.max(dim=1, keepdims=True))
+        # Нормализуем для численной устойчивости, а потом возводим в exp
+        self.output = torch.exp(module_input - module_input.max(dim=1, keepdims=True).values)
         self.output /= self.output.sum(dim=1).reshape(-1, 1)
 
         return self.output
 
     # TODO: попробовать сделать без циклов, но это непросто.........
     def update_module_input_grad(self, module_input, grad_output):
+        # Нужно проиницилизировать self.grad_input, так как дальше берутся уже индексы
+        if self.grad_input is None:
+            self.grad_input = torch.zeros(size=self.output.shape)
+
         for i in range(self.output.shape[0]):
-            softmax_i = self.output[i, :]
-            partial_softmax = -torch.matmul(softmax_i.transpose(dim0=0, dim1=1), softmax_i) + torch.diag(softmax_i)
+            softmax_i = self.output[i, :].unsqueeze(1)
+            partial_softmax = -torch.matmul(softmax_i, softmax_i.t()) + torch.diag(softmax_i)
             for j in range(self.output.shape[1]):
-                self.grad_input[i, j] = torch.mul(grad_output[i, :], partial_softmax[:, j])
+                self.grad_input[i, j] = torch.dot(grad_output[i, :], partial_softmax[:, j])
 
         return self.grad_input
 

@@ -38,7 +38,7 @@ class FeedForwardModel(Model):
             Выход модели.
         """
 
-        output = model_input.detach().clone()
+        output = model_input.clone().detach()
 
         for layer in self.layers:
             output = layer.forward(output)
@@ -63,7 +63,7 @@ class FeedForwardModel(Model):
             Градиент лосса по весам модели.
         """
 
-        g = grad_output.detach().clone()
+        g = grad_output.clone().detach()
 
         # Проходим с конца до 0-го НЕвключительно
         for i in range(1, len(self.layers)):
