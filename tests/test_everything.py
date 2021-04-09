@@ -372,7 +372,38 @@ class TestLayers(unittest.TestCase):
             self.assertTrue(torch.allclose(torch_layer_grad_var, custom_layer_input_grad, atol=1e-6))
 
     def test_KLDivergence(self):
-        raise NotImplementedError
+        torch.manual_seed(RANDOM_SEED)
+        np.random.seed(RANDOM_SEED)
+        batch_size, n_in = 2, 4
+
+        for _ in range(100):
+            # Инициализируем слои
+            torch_layer = torch.nn.KLDivLoss()
+            custom_layer = KLDivergence()
+
+            # Формируем тестовые данные
+            layer_input = self._generate_test_data((batch_size, n_in))
+            layer_input.requires_grad = False
+            layer_input = torch.nn.LogSoftmax(dim=1).forward(layer_input)
+
+            target_labels = np.random.choice(n_in, batch_size)
+            target = torch.zeros((batch_size, n_in))
+            target[np.arange(batch_size), target_labels] = 1  # one-hot encoding
+
+            # Тестируем прямой проход
+            custom_layer_output = custom_layer.forward(layer_input, target)
+
+            layer_input.requires_grad = True
+            torch_layer_output = torch_layer(layer_input, target)
+
+            self.assertTrue(torch.allclose(torch_layer_output, custom_layer_output, atol=1e-6))
+
+            # Тестируем обратный проход
+            custom_layer_grad = custom_layer.backward(layer_input, target)
+            torch_layer_output.backward()
+            torch_layer_grad = torch_layer_output.grad
+
+            self.assertTrue(torch.allclose(torch_layer_grad, custom_layer_grad, atol=1e-6))
 
     def test_MSE_with_regularization(self):
         raise NotImplementedError

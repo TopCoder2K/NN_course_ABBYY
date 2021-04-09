@@ -16,7 +16,7 @@ class Loss(Module):
     `output` : torch.tensor
         Выход лосса.
     `grad_input` : torch.tensor
-        Градиент по входу функции потерь.
+        Градиент по входу функции риска.
     """
 
     @abstractmethod
@@ -69,7 +69,7 @@ class MSE(Loss):
     `output` : torch.tensor
         Выход лосса.
     `grad_input` : torch.tensor
-        Градиент по входу функции потерь.
+        Градиент по входу функции риска.
     """
 
     def forward(self, y_pred, y_true):
@@ -85,15 +85,15 @@ class MSE(Loss):
 
 class CrossEntropy(Loss):
     """
-    Функция риска 'перекрёстная энтропия'. В `forward()` принимает на вход истинные и предсказанные вероятности
-    принадлежности к классам. Подробности по формулам см. в README.md.
+    Функция риска 'перекрёстная энтропия'. В `forward()` принимает на вход необработанные скоры для каждого из классов
+    и истинные метки классов. Подробности по формулам см. в README.md.
 
     Атрибуты
     --------
     `output` : torch.tensor
         Выход лосса.
     `grad_input` : torch.tensor
-        Градиент по входу функции потерь.
+        Градиент по входу функции риска.
     """
 
     EPS = 1e-15  # Для стабильности работы логарифма и деления при нулевых вероятностях.
@@ -126,7 +126,9 @@ class CrossEntropy(Loss):
 class KLDivergence(Loss):
     """
     Функция риска 'расстояние Кульбака-Лейблера'. Отличается от кросс-энтропии лишь на энтропию истинного
-    распределения вероятностей, поэтому подробных пояснений в README.md нет.
+    распределения вероятностей, поэтому подробных пояснений по формулам в README.md нет.
+    Также есть отличия в `forward()`: на вход ожидаются уже логарифмы предсказанных вероятностей, а также истинные
+    вероятности.
 
     Атрибуты
     --------
@@ -139,16 +141,15 @@ class KLDivergence(Loss):
     EPS = 1e-15  # Для стабильности работы логарифма и деления при нулевых вероятностях.
 
     def forward(self, y_pred, y_true):
-        y_pred_clamp = torch.clip(y_pred, self.EPS, 1 - self.EPS)
         y_true_clamp = torch.clip(y_true, self.EPS, 1 - self.EPS)
 
         self.output = torch.sum(torch.log(y_true_clamp) * y_true) / len(y_pred)
-        self.output -= torch.sum(torch.log(y_pred_clamp) * y_true) / len(y_pred)
+        self.output -= torch.sum(y_pred * torch.exp(y_true)) / len(y_pred)
 
         return self.output
 
     def update_module_input_grad(self, y_pred, y_true):
         y_pred_clamp = torch.clip(y_pred, self.EPS, 1 - self.EPS)
-        self.grad_input = -y_true / y_pred_clamp / len(y_pred)
+        self.grad_input = torch.div(-y_true, y_pred_clamp) / len(y_pred)
 
         return self.grad_input
