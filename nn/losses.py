@@ -118,8 +118,7 @@ class CrossEntropy(Loss):
         target = torch.zeros((batch_size, n_in))
         target[np.arange(batch_size), y_true] = 1  # one-hot encoding
 
-        self.log_softmax_layer.backward(y_pred, torch.tensor([[1.]]))
-        self.grad_input = torch.mul(-target / y_true.nelement(), self.log_softmax_layer.grad_input)
+        self.grad_input = self.log_softmax_layer.backward(y_pred, -target / y_true.nelement())
 
         return self.grad_input
 
