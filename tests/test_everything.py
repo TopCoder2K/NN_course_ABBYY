@@ -8,6 +8,8 @@ from nn.activations import ReLU, Sigmoid
 from nn.losses import MSE, CrossEntropy, KLDivergence
 from nn.optimizer import GradientDescend
 
+from nn.data import get_line, get_iris
+
 RANDOM_SEED = 1
 
 
@@ -96,7 +98,7 @@ class TestLayers(unittest.TestCase):
             return torch_layer_output.data, torch_layer_input_grad.data
 
     @staticmethod
-    def _train_torch_model(torch_model, data_train, n_epochs, loss, optimizer):
+    def _train_torch_model(torch_model, data_train, n_epochs, loss_fn, optimizer):
         """
         Функция для обучения модели. По-хорошему должна принимать ещё батч генератор, но пока без него.
 
@@ -108,7 +110,7 @@ class TestLayers(unittest.TestCase):
             Набор данных для обучения. Содержит в себе 2 тензора: признаковые описания и целевую переменную.
         `n_epochs` : integer
             Число эпох обучения.
-        `loss` : class object
+        `loss_fn` : class object
             Функция риска.
         `optimizer` : class object
             Оптимизатор для параметров модели.
@@ -123,9 +125,9 @@ class TestLayers(unittest.TestCase):
             torch_model.zero_grad()
             # Forward pass
             y_pred = torch_model.forward(x_train)
-            loss = loss.forward(y_pred, y_train).unsqueeze(0).unsqueeze(0)
+            loss = loss_fn(y_pred, y_train)
             # Backward pass
-            loss.backward(y_pred, y_train)
+            loss.backward()
             # Обновление весов
             optimizer.step()
 
@@ -186,8 +188,8 @@ class TestLayers(unittest.TestCase):
             )
 
             # Сравниваем выходы с точностью atol
-            self.assertTrue(torch.allclose(custom_layer_output, torch_layer_output, atol=1e-5))
-            self.assertTrue(torch.allclose(custom_layer_input_grad, torch_layer_input_grad, atol=1e-5))
+            self.assertTrue(torch.allclose(custom_layer_output, torch_layer_output, atol=1e-6))
+            self.assertTrue(torch.allclose(custom_layer_input_grad, torch_layer_input_grad, atol=1e-6))
 
     def test_LogSoftmax(self):
         torch.manual_seed(RANDOM_SEED)
@@ -212,8 +214,8 @@ class TestLayers(unittest.TestCase):
             )
 
             # Сравниваем выходы с точностью atol
-            self.assertTrue(torch.allclose(custom_layer_output, torch_layer_output, atol=1e-5))
-            self.assertTrue(torch.allclose(custom_layer_input_grad, torch_layer_input_grad, atol=1e-5))
+            self.assertTrue(torch.allclose(custom_layer_output, torch_layer_output, atol=1e-6))
+            self.assertTrue(torch.allclose(custom_layer_input_grad, torch_layer_input_grad, atol=1e-6))
 
     def test_FeedForwardModel(self):
         torch.manual_seed(RANDOM_SEED)
@@ -451,7 +453,7 @@ class TestLayers(unittest.TestCase):
 
     def test_SimpleSGD(self):
         torch.manual_seed(RANDOM_SEED)
-        batch_size, n_in, n_out = 1, 1, 1
+        batch_size, n_in, n_out = 2, 3, 4
 
         # Формируем тестовые данные
         model_input = self._generate_test_data((batch_size, n_in))
@@ -477,20 +479,57 @@ class TestLayers(unittest.TestCase):
 
         # Обучаем
         custom_model.train([model_input, target], n_epochs=20)
-        self._train_torch_model(torch_model, [model_input, target], 20, torch.nn.MSELoss(),
-                                torch.optim.SGD(torch_model.parameters(), lr=0.01)
-                                )
+        self._train_torch_model(
+            torch_model, [model_input, target], 20, torch.nn.MSELoss(),
+            torch.optim.SGD(torch_model.parameters(), lr=0.01)
+        )
 
         # Сравниваем параметры
         torch_weight = None
         for layer in torch_model:
-            torch_weight = layer.weight.data.T
-        self.assertTrue(torch.allclose(custom_model.parameters, torch_weight))
+            torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+        self.assertTrue(torch.allclose(custom_model.parameters[0][0], torch_weight))
 
     def test_MomentumSGD(self):
         raise NotImplementedError
 
     def test_NesterovSGD(self):
+        raise NotImplementedError
+
+    # В данном случае параметры не выводятся красоты ради. Если нужны веса, см. linear_regression/test.py
+    def test_simple_regression(self):
+        torch.manual_seed(RANDOM_SEED)
+        x, y = get_line()   # Получаем данные для линейной регрессии
+
+        # Зададим модели и всё, что связано с обучением
+        n_epochs = 20
+        custom_model = FeedForwardModel(
+            layers=[
+                FullyConnectedLayer(
+                    1, 1, bias=False,
+                    init=torch.full((1, 1), 0.5, dtype=torch.float)
+                )
+            ],
+            loss=MSE(),
+            optimizer=GradientDescend(lr=0.3)
+        )
+        torch_model = torch.nn.Linear(1, 1, bias=False)
+        torch.nn.init.constant_(torch_model.weight, 0.5)
+        loss_fn = torch.nn.MSELoss(reduction='mean')
+        optimizer = torch.optim.SGD(torch_model.parameters(), lr=0.3)
+
+        # Обучим модели
+        with torch.no_grad():
+            custom_model.train(data_train=[x, y], n_epochs=n_epochs)
+
+        self._train_torch_model(torch_model, [x, y], 20, loss_fn, optimizer)
+
+        # Сравним параметры после обучения
+        for torch_param, custom_param in zip(torch_model.parameters(), custom_model.parameters):
+            print('Torch: ', torch_param, '\nCustom: ', custom_param[0])   # TODO: можно не так костылить?
+            self.assertTrue(torch.allclose(torch_param, custom_param[0], atol=1e-6))
+
+    def test_iris_dataset(self):
         raise NotImplementedError
 
 if __name__ == '__main__':
