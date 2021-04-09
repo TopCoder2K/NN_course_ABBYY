@@ -100,7 +100,7 @@ class Softmax(Module):
 
         for i in range(self.output.shape[0]):
             softmax_i = self.output[i, :].unsqueeze(1)
-            partial_softmax = -torch.matmul(softmax_i, softmax_i.t()) + torch.diag(softmax_i)
+            partial_softmax = -torch.matmul(softmax_i, softmax_i.t()) + torch.diag(softmax_i.squeeze())
             for j in range(self.output.shape[1]):
                 self.grad_input[i, j] = torch.dot(grad_output[i, :], partial_softmax[:, j])
 
