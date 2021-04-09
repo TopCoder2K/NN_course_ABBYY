@@ -129,6 +129,7 @@ class KLDivergence(Loss):
     распределения вероятностей, поэтому подробных пояснений по формулам в README.md нет.
     Также есть отличия в `forward()`: на вход ожидаются уже логарифмы предсказанных вероятностей, а также истинные
     вероятности.
+    Усреднение происходит по батчам.
 
     Атрибуты
     --------
@@ -142,14 +143,11 @@ class KLDivergence(Loss):
 
     def forward(self, y_pred, y_true):
         y_true_clamp = torch.clip(y_true, self.EPS, 1 - self.EPS)
-
-        self.output = torch.sum(torch.log(y_true_clamp) * y_true) / len(y_pred)
-        self.output -= torch.sum(y_pred * torch.exp(y_true)) / len(y_pred)
+        self.output = torch.sum(torch.mul(torch.log(y_true_clamp) - y_pred, y_true)) / len(y_pred)
 
         return self.output
 
     def update_module_input_grad(self, y_pred, y_true):
-        y_pred_clamp = torch.clip(y_pred, self.EPS, 1 - self.EPS)
-        self.grad_input = torch.div(-y_true, y_pred_clamp) / len(y_pred)
+        self.grad_input = -y_true / len(y_pred)
 
         return self.grad_input

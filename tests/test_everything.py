@@ -378,7 +378,7 @@ class TestLayers(unittest.TestCase):
 
         for _ in range(100):
             # Инициализируем слои
-            torch_layer = torch.nn.KLDivLoss()
+            torch_layer = torch.nn.KLDivLoss(reduction='batchmean')
             custom_layer = KLDivergence()
 
             # Формируем тестовые данные
@@ -401,7 +401,7 @@ class TestLayers(unittest.TestCase):
             # Тестируем обратный проход
             custom_layer_grad = custom_layer.backward(layer_input, target)
             torch_layer_output.backward()
-            torch_layer_grad = torch_layer_output.grad
+            torch_layer_grad = layer_input.grad
 
             self.assertTrue(torch.allclose(torch_layer_grad, custom_layer_grad, atol=1e-6))
 
