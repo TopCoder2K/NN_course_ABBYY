@@ -48,7 +48,7 @@ class FullyConnectedLayer(Module):
                 self.b = torch.tensor(np.random.uniform(-stdv, stdv, size=out_features), dtype=torch.float)
 
         self.gradW = torch.full((out_features, in_features), fill_value=0., dtype=torch.float)
-        self.gradb = torch.full((list(self.W.shape)[-1], 1), fill_value=0., dtype=torch.float)
+        self.gradb = torch.full((self.W.shape[-1], 1), fill_value=0., dtype=torch.float)
 
     def forward(self, module_input):
         self.output = torch.matmul(module_input, self.W)
@@ -58,11 +58,11 @@ class FullyConnectedLayer(Module):
         return self.output
 
     def zero_grad(self):
-        self.gradW = torch.zeros(self.gradW.shape)  # TODO: есть ли способ получше?
-        self.gradb = torch.zeros(self.gradb.shape)
+        self.gradW.fill_(0.)
+        self.gradb.fill_(0.)
 
     def update_module_input_grad(self, module_input, grad_output):
-        self.grad_input = grad_output @ self.W.t()
+        self.grad_input = torch.matmul(grad_output, self.W.t())
         return self.grad_input
 
     def update_params_grad(self, module_input, grad_output):
@@ -84,9 +84,6 @@ class FullyConnectedLayer(Module):
 
 class Softmax(Module):
     """Осуществляет softmax-преобразование. Подробности по формулам см. в README.md."""
-
-    def __init__(self):
-        super(Softmax, self).__init__()
 
     def forward(self, module_input):
         # Нормализуем для численной устойчивости, а потом возводим в exp
