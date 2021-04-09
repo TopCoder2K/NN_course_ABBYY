@@ -114,12 +114,18 @@ class TestLayers(unittest.TestCase):
             Функция риска.
         `optimizer` : class object
             Оптимизатор для параметров модели.
+        Возвращает
+        ----------
+        `loss_history` : list
+            История лоссов во время обучения.
         """
 
         x_train, y_train = data_train
         x_train.requires_gradient = True
         y_train.requires_gradient = True
+        loss_history = []
 
+        # TODO: batch generator
         for _ in range(n_epochs):
             # Обнуляем градиенты с предыдущей итерации
             torch_model.zero_grad()
@@ -130,6 +136,9 @@ class TestLayers(unittest.TestCase):
             loss.backward()
             # Обновление весов
             optimizer.step()
+
+            loss_history.append(loss.item())
+        return loss_history
 
     def test_FullyConnectedLayer(self):
         torch.manual_seed(RANDOM_SEED)
@@ -453,7 +462,7 @@ class TestLayers(unittest.TestCase):
 
     def test_SimpleSGD(self):
         torch.manual_seed(RANDOM_SEED)
-        batch_size, n_in, n_out = 2, 3, 4
+        batch_size, n_in, n_out = 10, 3, 4
 
         # Формируем тестовые данные
         model_input = self._generate_test_data((batch_size, n_in))

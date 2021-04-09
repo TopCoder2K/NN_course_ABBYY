@@ -97,23 +97,21 @@ class FeedForwardModel(Model):
         x_train, y_train = data_train
         loss_history = []
 
+        # TODO: Добавить батч генератор. По сути, он написан, но применить его с текущим интерфейсом не получится,
+        #  так как данные будут перемешиваться и веса будут отличаться от тех, что будут получаться в модели в торче.
         for _ in range(n_epochs):
-            batch_loss = 0.
-            for x_batch, y_batch in FeedForwardModel._train_batch_gen(x_train, y_train, batch_size):
-                # Обнуляем градиенты с предыдущей итерации
-                self.zero_grad()
-                # Forward pass
-                y_pred = self.forward(x_batch)
-                loss = self.loss.forward(y_pred, y_batch)
-                # Backward pass
-                last_grad_output = self.loss.backward(y_pred, y_batch)
-                self.backward(x_batch, last_grad_output)
-                # Обновление весов
-                self.optimizer.step(self.parameters, self.grad_params)
-                # Обновление суммарного лосса
-                batch_loss += loss.detach().numpy()
+            # Обнуляем градиенты с предыдущей итерации
+            self.zero_grad()
+            # Forward pass
+            y_pred = self.forward(x_train)
+            loss = self.loss.forward(y_pred, y_train)
+            # Backward pass
+            last_grad_output = self.loss.backward(y_pred, y_train)
+            self.backward(x_train, last_grad_output)
+            # Обновление весов
+            self.optimizer.step(self.parameters, self.grad_params)
 
             # Метод подсчёта лосса для одного батча --- усреднение
-            loss_history.append(batch_loss / batch_size)
+            loss_history.append(loss.item() / batch_size)
 
         return loss_history
