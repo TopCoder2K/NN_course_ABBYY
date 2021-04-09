@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from abc import abstractmethod
 
 from nn.base import Module
@@ -72,7 +73,7 @@ class MSE(Loss):
     """
 
     def forward(self, y_pred, y_true):
-        self.output = torch.sum((y_pred - y_true)**2) / y_true.nelement()
+        self.output = torch.sum((y_pred - y_true) ** 2) / y_true.nelement()
 
         return self.output
 
@@ -102,15 +103,23 @@ class CrossEntropy(Loss):
         self.log_softmax_layer = LogSoftmax()
 
     def forward(self, y_pred, y_true):
-        y_pred_clamp = torch.clip(y_pred, self.EPS, 1 - self.EPS)
-        log_probs = self.log_softmax_layer.forward(y_pred_clamp)
-        self.output = -torch.sum(torch.mul(log_probs, y_true)) / y_true.nelement()
+        batch_size, n_in = y_pred.shape
+        target = torch.zeros((batch_size, n_in))
+        target[np.arange(batch_size), y_true] = 1  # one-hot encoding
+
+        log_probs = self.log_softmax_layer.forward(y_pred)
+        # Заметим, что ниже делить нужно на число элементов в y_true!
+        self.output = -torch.sum(torch.mul(log_probs, target)) / y_true.nelement()
 
         return self.output
 
     def update_module_input_grad(self, y_pred, y_true):
-        y_pred_clamp = torch.clip(y_pred, self.EPS, 1 - self.EPS)
-        self.grad_input = -y_true / y_pred_clamp / y_true.nelement()
+        batch_size, n_in = y_pred.shape
+        target = torch.zeros((batch_size, n_in))
+        target[np.arange(batch_size), y_true] = 1  # one-hot encoding
+
+        self.log_softmax_layer.backward(y_pred, torch.tensor([[1.]]))
+        self.grad_input = torch.mul(-target / y_true.nelement(), self.log_softmax_layer.grad_input)
 
         return self.grad_input
 

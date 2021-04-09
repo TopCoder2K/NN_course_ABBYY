@@ -48,7 +48,7 @@ class FullyConnectedLayer(Module):
                 self.b = torch.tensor(np.random.uniform(-stdv, stdv, size=out_features), dtype=torch.float)
 
         self.gradW = torch.full((out_features, in_features), fill_value=0., dtype=torch.float)
-        self.gradb = torch.full((self.W.shape[-1], 1), fill_value=0., dtype=torch.float)
+        self.gradb = torch.full((out_features, 1), fill_value=0., dtype=torch.float)
 
     def forward(self, module_input):
         self.output = torch.matmul(module_input, self.W)
@@ -122,7 +122,6 @@ class LogSoftmax(Module):
         exp_module_input = torch.exp(module_input - module_input.max(axis=1, keepdim=True).values)
         softmax = exp_module_input / torch.sum(exp_module_input, dim=1, keepdim=True)
 
-        self.grad_input = grad_output.clone().detach()
-        self.grad_input -= torch.mul(softmax, torch.sum(grad_output, dim=1, keepdim=True))
+        self.grad_input = grad_output - torch.mul(softmax, torch.sum(grad_output, dim=1, keepdim=True))
 
         return self.grad_input

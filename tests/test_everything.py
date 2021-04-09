@@ -130,7 +130,6 @@ class TestLayers(unittest.TestCase):
             optimizer.step()
 
     def test_FullyConnectedLayer(self):
-        # np.random.seed(RANDOM_SEED)
         torch.manual_seed(RANDOM_SEED)
         batch_size, n_in, n_out = 2, 3, 4
 
@@ -335,7 +334,7 @@ class TestLayers(unittest.TestCase):
             layer_input.requires_grad = True
             torch_layer_output = torch_layer.forward(layer_input, target)
 
-            # Проверям, что выходы близки
+            # Проверяем, что выходы близки
             self.assertTrue(torch.allclose(torch_layer_output, custom_layer_output, atol=1e-6))
 
             # Тестируем обратный проход (градиенты)
@@ -356,24 +355,21 @@ class TestLayers(unittest.TestCase):
 
             # Формируем тестовые данные
             layer_input = self._generate_test_data((batch_size, n_in))
-            # layer_input = torch.nn.LogSoftmax(dim=1)(layer_input).data
-            target_labels = np.random.choice(n_in, batch_size)
-            target = torch.zeros((batch_size, n_in))
-            target[np.arange(batch_size), target_labels] = 1  # one-hot encoding
+            target_labels = torch.from_numpy(np.random.choice(n_in, batch_size))
 
             # Тестируем прямой проход
-            custom_layer_output = custom_layer.forward(torch.nn.LogSoftmax(dim=1)(layer_input), target)
+            custom_layer_output = custom_layer.forward(layer_input, target_labels)
 
             layer_input.requires_grad = True
-            torch_layer_output = torch_layer.forward(layer_input, torch.from_numpy(target_labels))
+            torch_layer_output = torch_layer.forward(layer_input, target_labels)
 
             self.assertTrue(torch.allclose(torch_layer_output, custom_layer_output, atol=1e-6))
 
             # Тестируем обратный проход (градиенты)
-            custom_layer_input_grad = custom_layer.backward(layer_input, target)
+            custom_layer_input_grad = custom_layer.backward(layer_input, target_labels)
             torch_layer_output.backward()
             torch_layer_grad_var = layer_input.grad
-            self.assertTrue(np.allclose(torch_layer_grad_var, custom_layer_input_grad, atol=1e-6))
+            self.assertTrue(torch.allclose(torch_layer_grad_var, custom_layer_input_grad, atol=1e-6))
 
     def test_KLDivergence(self):
         raise NotImplementedError
