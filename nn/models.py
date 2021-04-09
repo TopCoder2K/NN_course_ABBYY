@@ -104,10 +104,10 @@ class FeedForwardModel(Model):
                 self.zero_grad()
                 # Forward pass
                 y_pred = self.forward(x_batch)
-                loss = self.loss.forward(y_pred, y_train)
+                loss = self.loss.forward(y_pred, y_batch)
                 # Backward pass
-                last_grad_output = self.loss.backward(y_pred, y_train)
-                self.backward(x_train, last_grad_output)
+                last_grad_output = self.loss.backward(y_pred, y_batch)
+                self.backward(x_batch, last_grad_output)
                 # Обновление весов
                 self.optimizer.step(self.parameters, self.grad_params)
                 # Обновление суммарного лосса

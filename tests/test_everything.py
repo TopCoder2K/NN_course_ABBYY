@@ -526,12 +526,13 @@ class TestLayers(unittest.TestCase):
 
         # Сравним параметры после обучения
         for torch_param, custom_param in zip(torch_model.parameters(), custom_model.parameters):
-            print('Torch: ', torch_param, '\nCustom: ', custom_param[0])   # TODO: можно не так костылить?
-            self.assertTrue(torch.allclose(torch_param, custom_param[0], atol=1e-6))
+            self.assertTrue(torch.allclose(torch_param, custom_param[0], atol=1e-6))    # TODO: можно не так костылить?
 
     def test_iris_dataset(self):
         raise NotImplementedError
 
+
 if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestLayers)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = unittest.TestLoader()
+    suite.sortTestMethodsUsing = None   # TODO: Why doesn't work?(((
+    unittest.TextTestRunner(verbosity=2).run(suite.loadTestsFromTestCase(TestLayers))
