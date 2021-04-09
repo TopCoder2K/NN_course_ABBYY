@@ -48,7 +48,7 @@ class FullyConnectedLayer(Module):
                 self.b = torch.tensor(np.random.uniform(-stdv, stdv, size=out_features), dtype=torch.float)
 
         self.gradW = torch.full((out_features, in_features), fill_value=0., dtype=torch.float)
-        self.gradb = torch.full((out_features, 1), fill_value=0., dtype=torch.float)
+        self.gradb = torch.full((1, out_features), fill_value=0., dtype=torch.float)
 
     def forward(self, module_input):
         self.output = torch.matmul(module_input, self.W)
