@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
+
 import torch
+import numpy as np
 
 
 class Module(ABC):
@@ -185,8 +187,36 @@ class Model(Module, ABC):
         self.loss = loss
         self.optimizer = optimizer
 
+    @staticmethod
+    def _train_batch_gen(x_train, y_train, batch_size):
+        """
+        Генератор батчей.
+        На каждом шаге возвращает `batch_size` объектов из `x_train` и их меток из `labels`.
+
+        Параметры
+        ---------
+        `x_train` : torch.tensor
+            Признаковые описания объектов.
+        `y_train` : torch.tensor
+            Значения целевой переменной.
+        `batch_size` : integer
+            Размер батча.
+        Возвращает
+        ----------
+        Пару тензоров --- текущий батч объектов из x_train и y_train.
+        """
+
+        n_samples = x_train.shape[0]
+        indices = np.arange(n_samples)
+        np.random.shuffle(indices)  # Перемешиваем в случайном порядке в начале эпохи
+
+        for start in range(0, n_samples, batch_size):
+            end = min(start + batch_size, n_samples)
+            batch_idx = indices[start:end]
+            yield x_train[batch_idx], y_train[batch_idx]
+
     @abstractmethod
-    def train(self, data_train, n_epochs):
+    def train(self, data_train, n_epochs, batch_size=64):
         """
         Функция для обучения модели. По-хорошему должна принимать ещё батч генератор, но пока без него.
 
@@ -196,6 +226,8 @@ class Model(Module, ABC):
             Набор данных для обучения. Содержит в себе 2 тензора: признаковые описания и целевую переменную.
         `n_epochs` : integer
             Число эпох обучения.
+        `batch_size` : integer
+            Размер батча во время обучения.
         Возращает
         ---------
         `loss_history` : list

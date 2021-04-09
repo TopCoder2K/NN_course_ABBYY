@@ -406,6 +406,7 @@ class TestLayers(unittest.TestCase):
 
         # Задаём модели
         torch_model = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
+        # TODO: как получше сделать получение весов для модели из торча?
         weight_init = None
         for layer in torch_model:
             weight_init = layer.weight.data.T

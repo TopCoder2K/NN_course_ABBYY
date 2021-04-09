@@ -93,24 +93,27 @@ class FeedForwardModel(Model):
     # def apply_grad(self):
     #     raise NotImplementedError
 
-    def train(self, data_train, n_epochs):
+    def train(self, data_train, n_epochs, batch_size=64):
         x_train, y_train = data_train
         loss_history = []
 
         for _ in range(n_epochs):
-            # Обнуляем градиенты с предыдущей итерации
-            self.zero_grad()
-            # Forward pass
-            y_pred = self.forward(x_train)
-            loss = self.loss.forward(y_pred, y_train)
+            batch_loss = 0.
+            for x_batch, y_batch in FeedForwardModel._train_batch_gen(x_train, y_train, batch_size):
+                # Обнуляем градиенты с предыдущей итерации
+                self.zero_grad()
+                # Forward pass
+                y_pred = self.forward(x_batch)
+                loss = self.loss.forward(y_pred, y_train)
+                # Backward pass
+                last_grad_output = self.loss.backward(y_pred, y_train)
+                self.backward(x_train, last_grad_output)
+                # Обновление весов
+                self.optimizer.step(self.parameters, self.grad_params)
+                # Обновление суммарного лосса
+                batch_loss += loss.detach().numpy()
 
-            # Backward pass
-            last_grad_output = self.loss.backward(y_pred, y_train)
-            self.backward(x_train, last_grad_output)
-
-            # Обновление весов
-            self.optimizer.step(self.parameters, self.grad_params)
-
-            loss_history.append(loss)
+            # Метод подсчёта лосса для одного батча --- усреднение
+            loss_history.append(batch_loss / batch_size)
 
         return loss_history

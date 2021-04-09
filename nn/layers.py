@@ -87,8 +87,8 @@ class Softmax(Module):
 
     def forward(self, module_input):
         # Нормализуем для численной устойчивости, а потом возводим в exp
-        self.output = torch.exp(module_input - module_input.max(dim=1, keepdims=True).values)
-        self.output /= self.output.sum(dim=1).reshape(-1, 1)
+        self.output = torch.exp(module_input - module_input.max(dim=1, keepdim=True).values)
+        self.output /= self.output.sum(dim=1, keepdim=True)
 
         return self.output
 
