@@ -5,6 +5,10 @@
 2) SoftMax слой.
    ![SoftMax1](SoftMax1.png)
    ![SoftMax2](SoftMax2.png)
+   
+3) LogSoftMax слой.
+   ![LogSoftMax1](LogSoftMax1.png)
+   ![LogSoftMax2](LogSoftMax2.png)
 
 
 Пояснение по функциям активации.
@@ -18,7 +22,7 @@
 1) MSE loss.
    ![MSE](MSE.png)
    
-2) Cross-entropy loss (NLL loss).
+2) Cross-entropy loss.
    ![CrossEntropy](CrossEntropy.png)
    
 3) Kullback-Leibler divergence loss.

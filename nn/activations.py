@@ -32,7 +32,7 @@ class ReLU(Module):
         super(ReLU, self).__init__()
 
     def forward(self, module_input):
-        self.output = torch.maximum(module_input, torch.zeros(size=module_input.shape))
+        self.output = torch.maximum(module_input, torch.tensor(0.))
         return self.output
 
     def update_module_input_grad(self, layer_input, grad_output):

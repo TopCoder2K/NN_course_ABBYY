@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import unittest
 
-from nn.layers import FullyConnectedLayer, Softmax
+from nn.layers import FullyConnectedLayer, Softmax, LogSoftmax
 from nn.models import FeedForwardModel
 from nn.activations import ReLU, Sigmoid
 from nn.losses import MSE, CrossEntropy, KLDivergence
@@ -172,6 +172,32 @@ class TestLayers(unittest.TestCase):
             # Инициализируем слои
             custom_layer = Softmax()
             torch_layer = torch.nn.Softmax(dim=1)
+
+            # Формируем тестовые входные тензоры
+            layer_input = self._generate_test_data((batch_size, n_in))
+            next_layer_grad = self._generate_test_data((batch_size, n_in))
+
+            # Тестируем наш слой
+            custom_layer_output, custom_layer_input_grad = self._custom_forward_backward(
+                layer_input, next_layer_grad, custom_layer
+            )
+            # Тестируем слой на PyTorch
+            torch_layer_output, torch_layer_input_grad = self._torch_forward_backward(
+                layer_input, next_layer_grad, torch_layer
+            )
+
+            # Сравниваем выходы с точностью atol
+            self.assertTrue(torch.allclose(custom_layer_output, torch_layer_output, atol=1e-5))
+            self.assertTrue(torch.allclose(custom_layer_input_grad, torch_layer_input_grad, atol=1e-5))
+
+    def test_LogSoftmax(self):
+        torch.manual_seed(RANDOM_SEED)
+        batch_size, n_in = 2, 4
+
+        for _ in range(100):
+            # Инициализируем слои
+            custom_layer = LogSoftmax()
+            torch_layer = torch.nn.LogSoftmax(dim=1)
 
             # Формируем тестовые входные тензоры
             layer_input = self._generate_test_data((batch_size, n_in))

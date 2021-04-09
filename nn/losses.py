@@ -2,6 +2,7 @@ import torch
 from abc import abstractmethod
 
 from nn.base import Module
+from nn.layers import LogSoftmax
 
 
 class Loss(Module):
@@ -96,15 +97,20 @@ class CrossEntropy(Loss):
 
     EPS = 1e-15  # Для стабильности работы логарифма и деления при нулевых вероятностях.
 
+    def __init__(self):
+        super(CrossEntropy, self).__init__()
+        self.log_softmax_layer = LogSoftmax()
+
     def forward(self, y_pred, y_true):
         y_pred_clamp = torch.clip(y_pred, self.EPS, 1 - self.EPS)
-        self.output = -torch.sum(torch.log(y_pred_clamp) * y_true) / len(y_pred)
+        log_probs = self.log_softmax_layer.forward(y_pred_clamp)
+        self.output = -torch.sum(torch.mul(log_probs, y_true)) / y_true.nelement()
 
         return self.output
 
     def update_module_input_grad(self, y_pred, y_true):
         y_pred_clamp = torch.clip(y_pred, self.EPS, 1 - self.EPS)
-        self.grad_input = -y_true / y_pred_clamp / len(y_pred)
+        self.grad_input = -y_true / y_pred_clamp / y_true.nelement()
 
         return self.grad_input
 
