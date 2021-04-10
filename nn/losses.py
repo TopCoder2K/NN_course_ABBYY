@@ -105,7 +105,7 @@ class CrossEntropy(Loss):
     def forward(self, y_pred, y_true):
         batch_size, n_in = y_pred.shape
         target = torch.zeros((batch_size, n_in))
-        target[np.arange(batch_size), y_true] = 1  # one-hot encoding
+        target[np.arange(batch_size), y_true.long()] = 1  # one-hot encoding
 
         log_probs = self.log_softmax_layer.forward(y_pred)
         # Заметим, что ниже делить нужно на число элементов в y_true!
@@ -116,7 +116,7 @@ class CrossEntropy(Loss):
     def update_module_input_grad(self, y_pred, y_true):
         batch_size, n_in = y_pred.shape
         target = torch.zeros((batch_size, n_in))
-        target[np.arange(batch_size), y_true] = 1  # one-hot encoding
+        target[np.arange(batch_size), y_true.long()] = 1  # one-hot encoding
 
         self.grad_input = self.log_softmax_layer.backward(y_pred, -target / y_true.nelement())
 

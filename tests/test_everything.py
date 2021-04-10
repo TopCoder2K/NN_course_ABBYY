@@ -2,11 +2,15 @@ import torch
 import numpy as np
 import unittest
 
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
+
 from nn.layers import FullyConnectedLayer, Softmax, LogSoftmax
 from nn.models import FeedForwardModel
 from nn.activations import ReLU, Sigmoid
 from nn.losses import MSE, CrossEntropy, KLDivergence
-from nn.optimizer import GradientDescend
+from nn.optimizer import GradientDescend, Adam
 
 from nn.data import get_line, get_iris
 
@@ -416,50 +420,6 @@ class TestLayers(unittest.TestCase):
 
             self.assertTrue(torch.allclose(torch_layer_grad, custom_layer_grad, atol=1e-6))
 
-    def test_MSE_with_regularization(self):
-        raise NotImplementedError
-    #     torch.manual_seed(RANDOM_SEED)
-    #     batch_size, n_in, n_out = 2, 3, 4
-    #     l1, l2 = 0.1, 10.
-    #
-    #     for _ in range(100):
-    #         # Формируем тестовые данные
-    #         layer_input = self._generate_test_data((batch_size, n_in))
-    #         target = torch.zeros((batch_size, n_in))
-    #         params = self._generate_test_data((n_in, n_out))
-    #
-    #         # Инициализируем слои
-    #         torch_layer = torch.nn.MSELoss()
-    #         custom_layer_l1 = MSE(l1=l1, params=params)
-    #         custom_layer_l2 = MSE(l2=l2, params=params)
-    #
-    #         # Тестируем прямой проход
-    #         custom_layer_output_l1 = custom_layer_l1.forward(layer_input, target)
-    #         custom_layer_output_l2 = custom_layer_l2.forward(layer_input, target)
-    #
-    #         layer_input.requires_grad = True
-    #         torch_layer_output = torch_layer.forward(layer_input, target)
-    #         l1_penalty = params.abs().sum()
-    #         l2_penalty = params.square().sum()
-    #         loss_l1 = torch_layer_output + l1 * l1_penalty
-    #         loss_l2 = torch_layer_output + l2 * l2_penalty
-    #
-    #         # Проверям, что выходы близки
-    #         self.assertTrue(torch.allclose(loss_l1, custom_layer_output_l1, atol=1e-6))
-    #         self.assertTrue(torch.allclose(loss_l2, custom_layer_output_l2, atol=1e-6))
-    #
-    #         # Тестируем обратный проход (градиенты)
-    #         custom_layer_input_grad_l1 = custom_layer_l1.backward(layer_input, target)
-    #         custom_layer_input_grad_l2 = custom_layer_l2.backward(layer_input, target)
-    #
-    #         loss_l1.backward()
-    #         torch_layer_input_grad_l1 = layer_input.grad
-    #         self.assertTrue(torch.allclose(torch_layer_input_grad_l1, custom_layer_input_grad_l1, atol=1e-6))
-    #         layer_input.zero_grad()
-    #         loss_l2.backward()
-    #         torch_layer_input_grad_l2 = layer_input.grad
-    #         self.assertTrue(torch.allclose(torch_layer_input_grad_l2, custom_layer_input_grad_l2, atol=1e-6))
-
     def test_SimpleSGD(self):
         torch.manual_seed(RANDOM_SEED)
         batch_size, n_in, n_out = 10, 3, 4
@@ -493,17 +453,180 @@ class TestLayers(unittest.TestCase):
             torch.optim.SGD(torch_model.parameters(), lr=0.01)
         )
 
-        # Сравниваем параметры
+        # Сравниваем параметры модели после обучения
         torch_weight = None
         for layer in torch_model:
             torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
         self.assertTrue(torch.allclose(custom_model.parameters[0][0], torch_weight))
 
     def test_MomentumSGD(self):
-        raise NotImplementedError
+        torch.manual_seed(RANDOM_SEED)
+        batch_size, n_in, n_out = 10, 3, 4
+
+        # Формируем тестовые данные
+        model_input = self._generate_test_data((batch_size, n_in))
+        target = self._generate_test_data((batch_size, n_out))
+
+        # Задаём модели
+        torch_model = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
+        # TODO: как получше сделать получение весов для модели из торча?
+        weight_init = None
+        for layer in torch_model:
+            weight_init = layer.weight.data.T
+
+        custom_model = FeedForwardModel(
+            layers=[
+                FullyConnectedLayer(
+                    n_in, n_out, bias=False,
+                    init=weight_init  # Так как слой всего один, это то, что нужно
+                )
+            ],
+            loss=MSE(),
+            optimizer=GradientDescend(lr=0.1, momentum=0.5)
+        )
+
+        # Обучаем
+        custom_model.train([model_input, target], n_epochs=20)
+        self._train_torch_model(
+            torch_model, [model_input, target], 20, torch.nn.MSELoss(),
+            torch.optim.SGD(torch_model.parameters(), lr=0.1, momentum=0.5)
+        )
+
+        # Сравниваем параметры модели после обучения
+        torch_weight = None
+        for layer in torch_model:
+            torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+        self.assertTrue(torch.allclose(custom_model.parameters[0][0], torch_weight))
 
     def test_NesterovSGD(self):
         raise NotImplementedError
+
+    def test_Adam(self):
+        torch.manual_seed(RANDOM_SEED)
+        batch_size, n_in, n_out = 10, 3, 4
+
+        # Формируем тестовые данные
+        model_input = self._generate_test_data((batch_size, n_in))
+        target = self._generate_test_data((batch_size, n_out))
+
+        # Задаём модели
+        torch_model = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
+        # TODO: как получше сделать получение весов для модели из торча?
+        weight_init = None
+        for layer in torch_model:
+            weight_init = layer.weight.data.T
+
+        custom_model = FeedForwardModel(
+            layers=[
+                FullyConnectedLayer(
+                    n_in, n_out, bias=False,
+                    init=weight_init  # Так как слой всего один, это то, что нужно
+                )
+            ],
+            loss=MSE(),
+            optimizer=Adam(lr=0.01)
+        )
+
+        # Обучаем
+        custom_model.train([model_input, target], n_epochs=20)
+        self._train_torch_model(
+            torch_model, [model_input, target], 20, torch.nn.MSELoss(),
+            torch.optim.Adam(torch_model.parameters(), lr=0.01)
+        )
+
+        # Сравниваем параметры модели после обучения
+        torch_weight = None
+        for layer in torch_model:
+            torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+        self.assertTrue(torch.allclose(custom_model.parameters[0][0], torch_weight))
+
+    def test_MSE_with_regularization(self):
+        torch.manual_seed(RANDOM_SEED)
+        batch_size, n_in, n_out = 10, 3, 4
+        l1, l2 = 0.1, 10.
+
+        for _ in range(100):
+            # Формируем тестовые данные
+            model_input = self._generate_test_data((batch_size, n_in))
+            target = self._generate_test_data((batch_size, n_out))
+
+            # Задаём модели
+            torch_model_l1 = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
+            torch_model_l2 = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
+
+            # TODO: как получше сделать получение весов для модели из торча?
+            weight_init = None
+            for layer in torch_model_l1:
+                weight_init = layer.weight.data.T
+            custom_model_l1 = FeedForwardModel(
+                layers=[
+                    FullyConnectedLayer(
+                        n_in, n_out, bias=False,
+                        init=weight_init  # Так как слой всего один, это то, что нужно
+                    )
+                ],
+                loss=MSE(),
+                optimizer=GradientDescend(lr=0.1, l1=l1)
+            )
+            for layer in torch_model_l2:
+                weight_init = layer.weight.data.T
+            custom_model_l2 = FeedForwardModel(
+                layers=[
+                    FullyConnectedLayer(
+                        n_in, n_out, bias=False,
+                        init=weight_init  # Так как слой всего один, это то, что нужно
+                    )
+                ],
+                loss=MSE(),
+                optimizer=GradientDescend(lr=0.1, l2=l2)
+            )
+
+            # Обучаем
+            custom_model_l1.train([model_input, target], n_epochs=20)
+            custom_model_l2.train([model_input, target], n_epochs=20)
+
+            model_input.requires_gradient = True
+            target.requires_gradient = True
+            optimizer_l1 = torch.optim.SGD(torch_model_l1.parameters(), lr=0.1)
+            optimizer_l2 = torch.optim.SGD(torch_model_l2.parameters(), lr=0.1)
+            loss_fn_l1 = torch.nn.MSELoss()
+            loss_fn_l2 = torch.nn.MSELoss()
+
+            for _ in range(20):
+                # Обнуляем градиенты с предыдущей итерации
+                torch_model_l1.zero_grad()
+                torch_model_l2.zero_grad()
+                # Forward pass
+                y_pred_l1 = torch_model_l1.forward(model_input)
+                y_pred_l2 = torch_model_l2.forward(model_input)
+
+                loss_l1 = loss_fn_l1(y_pred_l1, target)
+                loss_l2 = loss_fn_l2(y_pred_l2, target)
+                l1_penalty, l2_penalty = 0., 0.
+                for param in torch_model_l1.parameters():
+                    l1_penalty += param.abs().sum()
+                for param in torch_model_l2.parameters():
+                    l2_penalty += param.square().sum()
+                loss_l1 += l1 * l1_penalty
+                loss_l2 += l2 * l2_penalty
+
+                # Backward pass
+                loss_l1.backward()
+                loss_l2.backward()
+                # Обновление весов
+                optimizer_l1.step()
+                optimizer_l2.step()
+
+            # Сравниваем параметры при использовании L1-регрессии
+            torch_weight = None
+            for layer in torch_model_l1:
+                torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+            self.assertTrue(torch.allclose(custom_model_l1.parameters[0][0], torch_weight))
+
+            # Сравниваем параметры при использовании L2-регрессии
+            for layer in torch_model_l2:
+                torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+            self.assertTrue(torch.allclose(custom_model_l2.parameters[0][0], torch_weight))
 
     # В данном случае параметры не выводятся красоты ради. Если нужны веса, см. linear_regression/test.py
     def test_simple_regression(self):
@@ -538,7 +661,32 @@ class TestLayers(unittest.TestCase):
             self.assertTrue(torch.allclose(torch_param, custom_param[0], atol=1e-6))    # TODO: можно не так костылить?
 
     def test_iris_dataset(self):
-        raise NotImplementedError
+        torch.manual_seed(RANDOM_SEED)
+        x, y = get_iris()
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=1, shuffle=True)
+        custom_acc, sklearn_acc = 0., 0.
+
+        with torch.no_grad():
+            custom_model = FeedForwardModel(
+                layers=[
+                    FullyConnectedLayer(4, 30),
+                    Sigmoid(),
+                    FullyConnectedLayer(30, 100),
+                    Sigmoid(),
+                    FullyConnectedLayer(100, 30),
+                    Sigmoid(),
+                    FullyConnectedLayer(30, 3)
+                ],
+                loss=CrossEntropy(),
+                optimizer=GradientDescend(lr=0.3, momentum=0.5)
+            )
+            custom_model.train(data_train=[x_train, y_train.squeeze()], n_epochs=500)
+            custom_acc = accuracy_score(custom_model.forward(x_test).numpy().argmax(axis=1), y_test)
+
+        log_reg = LogisticRegression(max_iter=500)
+        log_reg.fit(x_train, y_train.squeeze())
+        sklearn_acc = accuracy_score(log_reg.predict(x_test), y_test)
+        self.assertTrue(abs(custom_acc - sklearn_acc) < 0.1)
 
 
 if __name__ == '__main__':

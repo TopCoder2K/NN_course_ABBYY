@@ -50,7 +50,7 @@ class GradientDescend(Optimizer):
                         self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))
 
                     # Добавляем регуляризацию, если нужно
-                    self._add_regularization_grad(params, current_grad)
+                    self._add_regularization_grad(current_var, current_grad)
 
                     self.state['accumulated_grads'][var_index] = \
                         self.config['momentum'] * self.state['accumulated_grads'][var_index] + \
@@ -105,7 +105,7 @@ class Adam(Optimizer):
                                                    (1 - self.config['beta_2']) * torch.square(current_grad)
                     widehat_m_t = self.state['m_t'][var_index] / (1 - self.state['beta_1_t'])
                     widehat_v_t = self.state['v_t'][var_index] / (1 - self.state['beta_2_t'])
-                    current_var -= self.config['lr'] * torch.mul(widehat_m_t, 1. / (self.config['eps'] + widehat_v_t))
+                    current_var -= self.config['lr'] * torch.div(widehat_m_t, self.config['eps'] + widehat_v_t.sqrt())
 
                     var_index += 1
                     self.state['beta_1_t'] *= self.config['beta_1']
