@@ -164,7 +164,7 @@ class Optimizer(ABC):
             params_grad += self.config['l1'] * torch.sgn(params)
 
         if self.config['l2'] is not None:
-            params_grad += 2 * self.config['l2'] * params
+            params_grad += self.config['l2'] * params  # В PyTorch L2-регуляризация идёт с коэффициентом 1/2.
 
     @abstractmethod
     def step(self, params, params_grad):

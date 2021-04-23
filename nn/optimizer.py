@@ -44,6 +44,7 @@ class GradientDescend(Optimizer):
                 if current_var is not None:
                     # Добавляем регуляризацию, если нужно
                     self._add_regularization_grad(current_var, current_grad)
+
                     # Сохраняем старую скорость для Нестерова
                     velocity_prev = \
                         self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))

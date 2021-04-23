@@ -684,7 +684,7 @@ class TestLayers(unittest.TestCase):
                 l2_penalty = 0.
                 for param in torch_model_l2.parameters():
                     l2_penalty += param.square().sum()
-                loss_l2 += l2 * l2_penalty
+                loss_l2 += l2 / 2. * l2_penalty
 
                 # Backward pass
                 loss_l2.backward()
