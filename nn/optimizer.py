@@ -42,21 +42,14 @@ class GradientDescend(Optimizer):
         for current_layer_vars, current_layer_grads in zip(params, params_grad):
             for current_var, current_grad in zip(current_layer_vars, current_layer_grads):
                 if current_var is not None:
-                    # Так как словарь мог ещё не создаться, нужно это проверить. В целом можно это написать и просто
-                    # через cur_epoch > 0, но не хочется портить параметры step
-                    try:
-                        self.state['accumulated_grads'][var_index]
-                    except KeyError:
-                        self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))
-
                     # Добавляем регуляризацию, если нужно
                     self._add_regularization_grad(current_var, current_grad)
                     # Сохраняем старую скорость для Нестерова
-                    velocity_prev = self.state['accumulated_grads'][var_index]
+                    velocity_prev = \
+                        self.state['accumulated_grads'].setdefault(var_index, torch.zeros(current_grad.shape))
 
                     self.state['accumulated_grads'][var_index] = \
-                        self.config['momentum'] * self.state['accumulated_grads'][var_index] - \
-                        self.config['lr'] * current_grad
+                        self.config['momentum'] * velocity_prev - self.config['lr'] * current_grad
                     current_var += self.state['accumulated_grads'][var_index]
 
                     if self.config['is_nesterov']:
@@ -98,14 +91,10 @@ class Adam(Optimizer):
         for current_layer_vars, current_layer_grads in zip(params, params_grad):
             for current_var, current_grad in zip(current_layer_vars, current_layer_grads):
                 if current_var is not None:
-                    # Так как словарь мог ещё не создаться, нужно это проверить.
-                    try:
-                        self.state['m_t'][var_index]
-                    except KeyError:
-                        self.state['m_t'].setdefault(var_index, torch.zeros(current_grad.shape))
-                        self.state['v_t'].setdefault(var_index, torch.zeros(current_grad.shape))
-                        self.state['beta_1_t'].setdefault(var_index, self.config['beta_1'])
-                        self.state['beta_2_t'].setdefault(var_index, self.config['beta_2'])
+                    self.state['m_t'].setdefault(var_index, torch.zeros(current_grad.shape))
+                    self.state['v_t'].setdefault(var_index, torch.zeros(current_grad.shape))
+                    self.state['beta_1_t'].setdefault(var_index, self.config['beta_1'])
+                    self.state['beta_2_t'].setdefault(var_index, self.config['beta_2'])
 
                     self.state['m_t'][var_index] = self.config['beta_1'] * self.state['m_t'][var_index] + \
                                                    (1 - self.config['beta_1']) * current_grad

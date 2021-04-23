@@ -576,10 +576,10 @@ class TestLayers(unittest.TestCase):
             torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
         self.assertTrue(torch.allclose(custom_model.parameters[0][0], torch_weight))
 
-    def test_MSE_with_regularization(self):
+    def test_MSE_with_L1(self):
         torch.manual_seed(RANDOM_SEED)
         batch_size, n_in, n_out = 10, 3, 4
-        l1, l2 = 0.1, 10.
+        l1 = 0.1
 
         for _ in range(100):
             # Формируем тестовые данные
@@ -588,7 +588,6 @@ class TestLayers(unittest.TestCase):
 
             # Задаём модели
             torch_model_l1 = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
-            torch_model_l2 = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
 
             # TODO: как получше сделать получение весов для модели из торча?
             weight_init = None
@@ -604,6 +603,55 @@ class TestLayers(unittest.TestCase):
                 loss=MSE(),
                 optimizer=GradientDescend(lr=0.1, l1=l1)
             )
+
+            # Обучаем
+            custom_model_l1.train([model_input, target], n_epochs=20)
+
+            model_input.requires_gradient = True
+            # target.requires_gradient = True
+            optimizer_l1 = torch.optim.SGD(torch_model_l1.parameters(), lr=0.1)
+            loss_fn_l1 = torch.nn.MSELoss()
+
+            # Делаем несколько эпох обучения
+            for epoch in range(20):
+                # Обнуляем градиенты с предыдущей итерации
+                torch_model_l1.zero_grad()
+                # Forward pass
+                y_pred_l1 = torch_model_l1.forward(model_input)
+
+                # Добавляем регуляризацию к лоссу
+                loss_l1 = loss_fn_l1(y_pred_l1, target)
+                l1_penalty = 0.
+                for param in torch_model_l1.parameters():
+                    l1_penalty += param.abs().sum()
+                loss_l1 += l1 * l1_penalty
+
+                # Backward pass
+                loss_l1.backward()
+                # Обновление весов
+                optimizer_l1.step()
+
+            # Сравниваем параметры при использовании L1-регрессии
+            torch_weight = None
+            for layer in torch_model_l1:
+                torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+            self.assertTrue(torch.allclose(custom_model_l1.parameters[0][0], torch_weight))
+
+    def test_MSE_with_L2(self):
+        torch.manual_seed(RANDOM_SEED)
+        batch_size, n_in, n_out = 10, 3, 4
+        l2 = 10.
+
+        for _ in range(100):
+            # Формируем тестовые данные
+            model_input = self._generate_test_data((batch_size, n_in))
+            target = self._generate_test_data((batch_size, n_out))
+
+            # Задаём модели
+            torch_model_l2 = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
+
+            # TODO: как получше сделать получение весов для модели из торча?
+            weight_init = None
             for layer in torch_model_l2:
                 weight_init = layer.weight.data.T
             custom_model_l2 = FeedForwardModel(
@@ -618,48 +666,33 @@ class TestLayers(unittest.TestCase):
             )
 
             # Обучаем
-            custom_model_l1.train([model_input, target], n_epochs=20)
             custom_model_l2.train([model_input, target], n_epochs=20)
 
             model_input.requires_gradient = True
-            target.requires_gradient = True
-            optimizer_l1 = torch.optim.SGD(torch_model_l1.parameters(), lr=0.1)
             optimizer_l2 = torch.optim.SGD(torch_model_l2.parameters(), lr=0.1)
-            loss_fn_l1 = torch.nn.MSELoss()
             loss_fn_l2 = torch.nn.MSELoss()
 
-            for _ in range(20):
+            # Делаем несколько эпох обучения
+            for epoch in range(20):
                 # Обнуляем градиенты с предыдущей итерации
-                torch_model_l1.zero_grad()
                 torch_model_l2.zero_grad()
                 # Forward pass
-                y_pred_l1 = torch_model_l1.forward(model_input)
-                y_pred_l2 = torch_model_l2.forward(model_input)
+                y_pred = torch_model_l2.forward(model_input)
 
-                loss_l1 = loss_fn_l1(y_pred_l1, target)
-                loss_l2 = loss_fn_l2(y_pred_l2, target)
-                l1_penalty, l2_penalty = 0., 0.
-                for param in torch_model_l1.parameters():
-                    l1_penalty += param.abs().sum()
+                # Добавляем регуляризацию к лоссу
+                loss_l2 = loss_fn_l2(y_pred, target)
+                l2_penalty = 0.
                 for param in torch_model_l2.parameters():
                     l2_penalty += param.square().sum()
-                loss_l1 += l1 * l1_penalty
                 loss_l2 += l2 * l2_penalty
 
                 # Backward pass
-                loss_l1.backward()
                 loss_l2.backward()
                 # Обновление весов
-                optimizer_l1.step()
                 optimizer_l2.step()
 
-            # Сравниваем параметры при использовании L1-регрессии
-            torch_weight = None
-            for layer in torch_model_l1:
-                torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
-            self.assertTrue(torch.allclose(custom_model_l1.parameters[0][0], torch_weight))
-
             # Сравниваем параметры при использовании L2-регрессии
+            torch_weight = None
             for layer in torch_model_l2:
                 torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
             self.assertTrue(torch.allclose(custom_model_l2.parameters[0][0], torch_weight))
