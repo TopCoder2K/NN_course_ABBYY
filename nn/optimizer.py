@@ -89,6 +89,8 @@ class Adam(Optimizer):
         self.config['eps'] = eps
         self.state.setdefault('m_t', {})
         self.state.setdefault('v_t', {})
+        self.state.setdefault('beta_1_t', {})
+        self.state.setdefault('beta_2_t', {})
 
     def step(self, params, params_grad):
         var_index = 0  # Для каждого параметра будет своя ячейка с аккумулированными градиентами
@@ -102,17 +104,17 @@ class Adam(Optimizer):
                     except KeyError:
                         self.state['m_t'].setdefault(var_index, torch.zeros(current_grad.shape))
                         self.state['v_t'].setdefault(var_index, torch.zeros(current_grad.shape))
-                        self.state['beta_1_t'] = self.config['beta_1']
-                        self.state['beta_2_t'] = self.config['beta_2']
+                        self.state['beta_1_t'].setdefault(var_index, self.config['beta_1'])
+                        self.state['beta_2_t'].setdefault(var_index, self.config['beta_2'])
 
                     self.state['m_t'][var_index] = self.config['beta_1'] * self.state['m_t'][var_index] + \
                                                    (1 - self.config['beta_1']) * current_grad
                     self.state['v_t'][var_index] = self.config['beta_2'] * self.state['v_t'][var_index] + \
                                                    (1 - self.config['beta_2']) * torch.square(current_grad)
-                    widehat_m_t = self.state['m_t'][var_index] / (1 - self.state['beta_1_t'])
-                    widehat_v_t = self.state['v_t'][var_index] / (1 - self.state['beta_2_t'])
+                    widehat_m_t = self.state['m_t'][var_index] / (1 - self.state['beta_1_t'][var_index])
+                    widehat_v_t = self.state['v_t'][var_index] / (1 - self.state['beta_2_t'][var_index])
                     current_var -= self.config['lr'] * torch.div(widehat_m_t, self.config['eps'] + widehat_v_t.sqrt())
 
+                    self.state['beta_1_t'][var_index] *= self.config['beta_1']
+                    self.state['beta_2_t'][var_index] *= self.config['beta_2']
                     var_index += 1
-                    self.state['beta_1_t'] *= self.config['beta_1']
-                    self.state['beta_2_t'] *= self.config['beta_2']
