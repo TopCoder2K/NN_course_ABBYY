@@ -97,7 +97,7 @@ class FeedForwardModel(Model):
         x_train, y_train = data_train
         loss_history = []
 
-        # TODO: Добавить батч генератор. По сути, он написан, но применить его с текущим интерфейсом не получится,
+        # TODO: Добавить батч генератор. По сути, он написан, но применить его с текущими тестами не получится,
         #  так как данные будут перемешиваться и веса будут отличаться от тех, что будут получаться в модели в торче.
         for _ in range(n_epochs):
             # Обнуляем градиенты с предыдущей итерации
@@ -111,7 +111,7 @@ class FeedForwardModel(Model):
             # Обновление весов
             self.optimizer.step(self.parameters, self.grad_params)
 
-            # Метод подсчёта лосса для одного батча --- усреднение
-            loss_history.append(loss.item() / batch_size)
+            # Так как лоссы внутри сами решают, как им усреднять, тут не усредняем по батчам
+            loss_history.append(loss.item())
 
         return loss_history

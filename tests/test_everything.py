@@ -499,7 +499,43 @@ class TestLayers(unittest.TestCase):
         self.assertTrue(torch.allclose(custom_model.parameters[0][0], torch_weight))
 
     def test_NesterovSGD(self):
-        raise NotImplementedError
+        torch.manual_seed(RANDOM_SEED)
+        batch_size, n_in, n_out = 10, 3, 4
+
+        # Формируем тестовые данные
+        model_input = self._generate_test_data((batch_size, n_in))
+        target = self._generate_test_data((batch_size, n_out))
+
+        # Задаём модели
+        torch_model = torch.nn.Sequential(torch.nn.Linear(n_in, n_out, bias=False))
+        # TODO: как получше сделать получение весов для модели из торча?
+        weight_init = None
+        for layer in torch_model:
+            weight_init = layer.weight.data.T
+
+        custom_model = FeedForwardModel(
+            layers=[
+                FullyConnectedLayer(
+                    n_in, n_out, bias=False,
+                    init=weight_init  # Так как слой всего один, это то, что нужно
+                )
+            ],
+            loss=MSE(),
+            optimizer=GradientDescend(lr=0.1, momentum=0.5, is_nesterov=True)
+        )
+
+        # Обучаем
+        custom_model.train([model_input, target], n_epochs=20)
+        self._train_torch_model(
+            torch_model, [model_input, target], 20, torch.nn.MSELoss(),
+            torch.optim.SGD(torch_model.parameters(), lr=0.1, momentum=0.5, nesterov=True)
+        )
+
+        # Сравниваем параметры модели после обучения
+        torch_weight = None
+        for layer in torch_model:
+            torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+        self.assertTrue(torch.allclose(custom_model.parameters[0][0], torch_weight))
 
     def test_Adam(self):
         torch.manual_seed(RANDOM_SEED)

@@ -51,11 +51,17 @@ class GradientDescend(Optimizer):
 
                     # Добавляем регуляризацию, если нужно
                     self._add_regularization_grad(current_var, current_grad)
+                    # Сохраняем старую скорость для Нестерова
+                    velocity_prev = self.state['accumulated_grads'][var_index]
 
                     self.state['accumulated_grads'][var_index] = \
-                        self.config['momentum'] * self.state['accumulated_grads'][var_index] + \
+                        self.config['momentum'] * self.state['accumulated_grads'][var_index] - \
                         self.config['lr'] * current_grad
-                    current_var -= self.state['accumulated_grads'][var_index]
+                    current_var += self.state['accumulated_grads'][var_index]
+
+                    if self.config['is_nesterov']:
+                        current_var += self.config['momentum'] * \
+                                       (-velocity_prev + self.state['accumulated_grads'][var_index])
 
                     var_index += 1
 
