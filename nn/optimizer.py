@@ -78,8 +78,8 @@ class Adam(Optimizer):
     def __init__(self, lr=0.001, beta1=0.9, beta2=0.999, eps=1e-8):
         super(Adam, self).__init__()
         self.config['lr'] = lr
-        self.config['beta1'] = beta1
-        self.config['beta2'] = beta2
+        self.config['beta_1'] = beta1
+        self.config['beta_2'] = beta2
         self.config['eps'] = eps
         self.state.setdefault('m_t', {})
         self.state.setdefault('v_t', {})

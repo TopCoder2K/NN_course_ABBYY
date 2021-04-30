@@ -93,25 +93,24 @@ class FeedForwardModel(Model):
     # def apply_grad(self):
     #     raise NotImplementedError
 
-    def train(self, data_train, n_epochs, batch_size=64):
+    def train(self, data_train, n_epochs, batch_size=64, batch_stochastic=False):
         x_train, y_train = data_train
         loss_history = []
 
-        # TODO: Добавить батч генератор. По сути, он написан, но применить его с текущими тестами не получится,
-        #  так как данные будут перемешиваться и веса будут отличаться от тех, что будут получаться в модели в торче.
         for _ in range(n_epochs):
-            # Обнуляем градиенты с предыдущей итерации
-            self.zero_grad()
-            # Forward pass
-            y_pred = self.forward(x_train)
-            loss = self.loss.forward(y_pred, y_train)
-            # Backward pass
-            last_grad_output = self.loss.backward(y_pred, y_train)
-            self.backward(x_train, last_grad_output)
-            # Обновление весов
-            self.optimizer.step(self.parameters, self.grad_params)
+            for x_batch, y_batch in Model._train_batch_gen(x_train, y_train, batch_size, batch_stochastic):
+                # Обнуляем градиенты с предыдущей итерации
+                self.zero_grad()
+                # Forward pass
+                y_batch_pred = self.forward(x_batch)
+                loss = self.loss.forward(y_batch_pred, y_batch)
+                # Backward pass
+                last_grad_output = self.loss.backward(y_batch_pred, y_batch)
+                self.backward(x_batch, last_grad_output)
+                # Обновление весов
+                self.optimizer.step(self.parameters, self.grad_params)
 
-            # Так как лоссы внутри сами решают, как им усреднять, тут не усредняем по батчам
-            loss_history.append(loss.item())
+                # Так как лоссы внутри сами решают, как им усреднять, тут не усредняем по батчам
+                loss_history.append(loss.item())
 
         return loss_history

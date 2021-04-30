@@ -188,7 +188,7 @@ class Model(Module, ABC):
         self.optimizer = optimizer
 
     @staticmethod
-    def _train_batch_gen(x_train, y_train, batch_size):
+    def _train_batch_gen(x_train, y_train, batch_size, batch_stochastic):
         """
         Генератор батчей.
         На каждом шаге возвращает `batch_size` объектов из `x_train` и их меток из `labels`.
@@ -201,6 +201,8 @@ class Model(Module, ABC):
             Значения целевой переменной.
         `batch_size` : integer
             Размер батча.
+        `batch_stochastic` : boolean
+            Перемешивать ли индексы перед распределением по батчам?
         Возвращает
         ----------
         Пару тензоров --- текущий батч объектов из x_train и y_train.
@@ -208,7 +210,9 @@ class Model(Module, ABC):
 
         n_samples = x_train.shape[0]
         indices = np.arange(n_samples)
-        np.random.shuffle(indices)  # Перемешиваем в случайном порядке в начале эпохи
+
+        if batch_stochastic:
+            np.random.shuffle(indices)  # Перемешиваем в случайном порядке в начале эпохи
 
         for start in range(0, n_samples, batch_size):
             end = min(start + batch_size, n_samples)
@@ -216,7 +220,7 @@ class Model(Module, ABC):
             yield x_train[batch_idx], y_train[batch_idx]
 
     @abstractmethod
-    def train(self, data_train, n_epochs, batch_size=64):
+    def train(self, data_train, n_epochs, batch_size=64, batch_stochastic=False):
         """
         Функция для обучения модели. По-хорошему должна принимать ещё батч генератор, но пока без него.
 
@@ -228,6 +232,7 @@ class Model(Module, ABC):
             Число эпох обучения.
         `batch_size` : integer
             Размер батча во время обучения.
+        `batch_stochastic` : boolean
         Возвращает
         ---------
         `loss_history` : list
