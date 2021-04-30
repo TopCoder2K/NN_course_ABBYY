@@ -1,5 +1,6 @@
+import numpy as np
+import numpy.random as nr
 import torch
-import numpy as np, numpy.random as nr
 # import matplotlib.pyplot as plt
 
 
@@ -21,5 +22,5 @@ def get_iris():
     x, y = load_iris(return_X_y=True)
     x = torch.tensor(x, dtype=torch.float)
     # x = (x - x.mean()) / x.std()
-    y = torch.tensor(np.expand_dims(y, 1), dtype=torch.float)
+    y = torch.tensor(np.expand_dims(y, 1), dtype=torch.int)
     return x, y
