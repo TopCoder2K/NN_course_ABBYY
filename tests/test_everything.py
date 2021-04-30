@@ -276,7 +276,7 @@ class TestLayers(unittest.TestCase):
 
             # Сравниваем выходы и градиенты с точностью atol
             self.assertTrue(torch.allclose(torch_layer_output, custom_layer_output, atol=1e-6))
-            self.assertTrue(torch.allclose(torch_layer_input_grad, custom_layer_input_grad, atol=1e-4))
+            self.assertTrue(torch.allclose(torch_layer_input_grad, custom_layer_input_grad, atol=1e-6))
 
     def test_ReLU(self):
         torch.manual_seed(RANDOM_SEED)
@@ -608,7 +608,6 @@ class TestLayers(unittest.TestCase):
             custom_model_l1.train([model_input, target], n_epochs=20)
 
             model_input.requires_gradient = True
-            # target.requires_gradient = True
             optimizer_l1 = torch.optim.SGD(torch_model_l1.parameters(), lr=0.1)
             loss_fn_l1 = torch.nn.MSELoss()
 
@@ -635,7 +634,10 @@ class TestLayers(unittest.TestCase):
             torch_weight = None
             for layer in torch_model_l1:
                 torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
-            self.assertTrue(torch.allclose(custom_model_l1.parameters[0][0], torch_weight))
+
+            # print(torch.allclose(custom_model_l1.parameters[0][0], torch_weight))
+            # print(custom_model_l1.parameters[0][0], torch_weight)
+            self.assertTrue(torch.allclose(custom_model_l1.parameters[0][0], torch_weight, rtol=1e-4))
 
     def test_MSE_with_L2(self):
         torch.manual_seed(RANDOM_SEED)
@@ -695,6 +697,9 @@ class TestLayers(unittest.TestCase):
             torch_weight = None
             for layer in torch_model_l2:
                 torch_weight = layer.weight.data.T  # TODO: как получше сделать получение весов для модели из торча?
+
+            # if _ % 10 == 0:
+            #     print(custom_model_l2.parameters[0][0], torch_weight)
             self.assertTrue(torch.allclose(custom_model_l2.parameters[0][0], torch_weight))
 
     # В данном случае параметры не выводятся красоты ради. Если нужны веса, см. linear_regression/test.py
