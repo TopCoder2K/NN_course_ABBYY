@@ -122,19 +122,27 @@ class Flatten:
         return dZ.reshape(self.input_shape)
 
 
-class BatchNormalization:
-    """ 2D батч нормализация без скейлинга. Заметим, что она не умеет
-    переключаться в режим test.
+class BatchNormalization2D:
+    """ 2D батч нормализация без скейлинга.
     Подробности по формулам в ноутбуке.
     """
 
-    def __init__(self, nb_channels, eps=1e-3):
-        self.nb_channels = nb_channels  # Не особо-то и нужно
-        # self.alpha = alpha
-        # self.moving_mean = None
-        # self.moving_variance = None  # Будем хранить именно \sigma^2
+    def __init__(self, nb_channels, alpha=0., eps=1e-3):
+        self.alpha = alpha
+        self.moving_mean = torch.zeros((1, nb_channels, 1, 1))
+        # Будем хранить именно \sigma^2
+        self.moving_var = torch.zeros((1, nb_channels, 1, 1))
+
+        self.training = True
+
         self.eps = eps
         self.cache = {}
+
+    def train(self):
+        self.training = True
+
+    def eval(self):
+        self.training = False
 
     def forward(self, X):
         mu = torch.mean(X, dim=(0, 2, 3), keepdim=True)  # (1, C, 1, 1)
@@ -144,21 +152,17 @@ class BatchNormalization:
         self.cache['mu'] = mu.detach().clone()
         self.cache['sigma2'] = sigma2.detach().clone()
 
-        # if self.moving_mean is None:
-        #     self.moving_mean = 0.
-        # if self.moving_mean is None:
-        #     self.moving_variance = 0.
+        if self.training:
+            self.moving_mean = self.alpha * self.moving_mean + \
+                               mu * (1 - self.alpha)
+            self.moving_var = self.alpha * self.moving_var + \
+                              sigma2 * (1 - self.alpha)
+            output = (X - mu) / (sigma2 + self.eps) ** 0.5
+        else:
+            output = (X - self.moving_mean) / \
+                     (self.moving_var + self.eps) ** 0.5
 
-        # if self.training == True:
-        # self.moving_mean = self.alpha * self.moving_mean + \
-        # widehat_mu * (1 - self.alpha)
-        # self.moving_variance = self.alpha * self.moving_variance + \
-        #                            widehat_sigma * (1 - self.alpha)
-        # else:
-        #     self.output = (input - self.moving_mean) / \
-        #                   (self.moving_variance + BatchNormalization.EPS) ** 0.5
-
-        return (X - mu) / (sigma2 + self.eps) ** 0.5  # broadcasting работает
+        return output
 
     def backward(self, dZ):
         X, mu = self.cache['input'], self.cache['mu']
@@ -236,13 +240,20 @@ class BatchNorm2d:
     Здесь каждый из этапов применятся по очереди.
     """
 
-    def __init__(self, nb_channels, eps=1e-5):
-        self.batch_norm = BatchNormalization(nb_channels, eps)
+    def __init__(self, nb_channels, alpha, eps=1e-5):
+        self.eps = eps
+        self.batch_norm = BatchNormalization2D(nb_channels, alpha, eps)
         self.scale = Scaling(nb_channels)
 
         # Так как структура нормальная не разработана, костылим
         self.W = self.scale.gamma
         self.b = self.scale.beta
+
+    def train(self):
+        self.batch_norm.train()
+
+    def eval(self):
+        self.batch_norm.eval()
 
     def forward(self, X):
         return self.scale.forward(self.batch_norm.forward(X))

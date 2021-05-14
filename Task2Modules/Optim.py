@@ -15,12 +15,7 @@ class SGD:
         self.params = params
 
     def update_params(self, grads):
-        new_params = self.params
-        #         print(grads)
+        for param_name in self.params.keys():
+            self.params[param_name] -= self.lr * grads['d' + param_name]
 
-        new_params['W1'] -= self.lr * grads['dW1']
-        new_params['b1'] -= self.lr * grads['db1']
-        new_params['W2'] -= self.lr * grads['dW2']
-        new_params['b2'] -= self.lr * grads['db2']
-
-        return new_params
+        return self.params

@@ -173,8 +173,9 @@ class Conv:
                              top_left_w:bottom_right_w]
                     for c in range(self.n_C):
                         # Применим свёртку
-                        Z[i, c, h, w] = Conv.single_conv(window, self.W[c],
-                                                         self.b[c])
+                        Z[i, c, h, w] = Conv.single_conv(
+                            window, self.W[c], self.b[c]
+                        )
 
         # Сохраняем то, что пригодится для обратного прохода
         self.cache = {'input': X, 'output': Z}
@@ -242,18 +243,20 @@ class Conv:
         assert dX.shape == self.cache['input'].shape
 
         # Теперь посчитаем градиенты по параметрам
-        layer_input_padded = torch.nn.functional.pad(
-            self.cache['input'], (self.p, self.p, self.p, self.p),
-            mode='constant', value=0
-        )
+        # layer_input_padded = torch.nn.functional.pad(
+        #     self.cache['input'], (self.p, self.p, self.p, self.p),
+        #     mode='constant', value=0
+        # )
         for i in range(m):
             x = self.cache['input'][i]
+            # (n_C, dilated_n_H, dilated_n_W)
             dz_transformed = Conv.dilate(dZ[i], self.s)
+            window_h, window_w = dz_transformed[0].shape
             for h in range(self.f):
                 for w in range(self.f):
                     # Выбираем конкретный двумерный фильтр
                     for c in range(n_C_prev):
-                        window = x[c, h: h + self.f, w: w + self.f]
+                        window = x[c, h:h + window_h, w:w + window_w]
                         for new_c in range(n_C):
                             # Теперь по формуле из ссылки на вторую часть
                             # последней статьи посчитаем значение каждого
@@ -261,14 +264,16 @@ class Conv:
                             self.dW[new_c, c, h, w] = Conv.single_conv(
                                 window, dz_transformed[new_c], 0.
                             )
-                            self.db[new_c] += dz_transformed[new_c].sum()
+
+        self.db = dZ.sum(dim=(0, 2, 3))  # Оставляем
 
         return dX, self.dW, self.db
 
 
 class AvgPool:
-    def __init__(self, filter_size, stride):
+    def __init__(self, filter_size, stride=1, padding=0):
         self.f = filter_size
+        self.p = padding
         self.s = stride
         self.cache = {}
 
@@ -288,13 +293,16 @@ class AvgPool:
         m, n_C_prev, n_H_prev, n_W_prev = self.cache['input_shape'] = X.shape
 
         # Посчитаем новый размеры по формуле из доков AvgPool2d
-        n_H = int(1 + (n_H_prev - self.f) / self.s)
-        n_W = int(1 + (n_W_prev - self.f) / self.s)
+        n_H = int(1 + (n_H_prev + 2 * self.p - self.f) / self.s)
+        n_W = int(1 + (n_W_prev + 2 * self.p - self.f) / self.s)
 
         Z = torch.zeros((m, n_C_prev, n_H, n_W))
+        X_padded = torch.nn.functional.pad(
+            X, (self.p, self.p, self.p, self.p), mode='constant', value=0
+        )
 
         for i in range(m):
-            cur_batch_elem = X[i]
+            cur_batch_elem = X_padded[i]
             for h in range(n_H):
                 for w in range(n_W):
                     # Определим границы текущего окна

@@ -97,7 +97,7 @@ class CustomModel2:
         self.conv1 = Conv(nb_filters=1, nb_channels=4, filter_size=3, padding=0)
         H = W = (input_size - 3) + 1  # по формуле преобразования размеров
 
-        self.bn1 = BatchNorm2d(4)
+        self.bn1 = BatchNorm2d(4, alpha=0.9)
         self.act1 = ReLU()
         self.pool1 = AvgPool(filter_size=2, stride=2)
         new_H = new_W = int(1 + (H - 2) / 2)  # тоже по формуле
