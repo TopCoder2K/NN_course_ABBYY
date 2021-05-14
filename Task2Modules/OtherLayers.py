@@ -46,8 +46,8 @@ class Fc:
         # не забываем, что для эмуляции CrossEntropyLoss(reduction='mean')
         # нужно делить self.dW и self.db на размер пакета
 
-        # Не знаю, к чему комментарий выше, ведь мы легко это учтём в самом
-        # классе CrossEntropy
+        # Не знаю, к чему преподавательский комментарий выше,
+        # ведь мы легко это учтём в самом классе CrossEntropy
         self.dW = torch.matmul(self.cache['input'].t(), dZ)
         self.db = torch.sum(dZ, dim=0)
 
@@ -110,6 +110,7 @@ class LogSoftmax:
 
 class Flatten:
     """ Убирает все размерности, кроме нулевой (размерность батча). """
+
     def __init__(self):
         self.input_shape = None
 
@@ -121,118 +122,130 @@ class Flatten:
         return dZ.reshape(self.input_shape)
 
 
-# class BatchNormalization:
-#     """ Батч нормализация без скейлинга. """
-#
-#     EPS = 1e-3
-#
-#     def __init__(self, alpha=0.):
-#         self.alpha = alpha
-#         self.moving_mean = None
-#         self.moving_variance = None  # Будем хранить именно \sigma^2
-#
-#     def forward(self, layer_input):
-#         widehat_mu = torch.mean(layer_input, dim=0)
-#         widehat_sigma = torch.mean((layer_input - widehat_mu) ** 2, dim=0)
-#
-#         if self.moving_mean is None:
-#             self.moving_mean = 0.
-#         if self.moving_mean is None:
-#             self.moving_variance = 0.
-#
-#         # TODO: условие некорректное????????????????????????????????
-#         if self.training == True:
-#             self.moving_mean = self.alpha * self.moving_mean + \
-#                                widehat_mu * (1 - self.alpha)
-#             self.moving_variance = self.alpha * self.moving_variance + \
-#                                    widehat_sigma * (1 - self.alpha)
-#             self.output = (input - widehat_mu) / \
-#                           (widehat_sigma + BatchNormalization.EPS) ** 0.5
-#         else:
-#             self.output = (input - self.moving_mean) / \
-#                           (self.moving_variance + BatchNormalization.EPS) ** 0.5
-#
-#         return self.output
-#
-#     def backward(self, input, grad_output):
-#         N = np.asarray(input).shape[0]
-#         widehat_mu = np.mean(input, axis=0)
-#         widehat_sigma = np.mean((input - widehat_mu) ** 2, axis=0)
-#
-#         self.grad_input = grad_output / (widehat_sigma + BatchNormalization.EPS) ** 0.5 + \
-#                           -1. / (widehat_sigma + BatchNormalization.EPS) ** 0.5 * np.mean(grad_output, axis=0) + \
-#                           -0.5 * (widehat_sigma + BatchNormalization.EPS) ** (-3. / 2) * \
-#                           np.sum(grad_output * (input - widehat_mu), axis=0) * 2 * (input - widehat_mu) / N
-#
-#         return self.grad_input
-#
-#
-# class Scaling:
-#     """ Скейлинг с обучаемыми параметрами. """
-#
-#     def __init__(self, n_out):
-#         stdv = 1. / np.sqrt(n_out)
-#         self.gamma = np.random.uniform(-stdv, stdv, size=(1, n_out))
-#         self.beta = np.random.uniform(-stdv, stdv, size=(1, n_out))
-#
-#         self.gradGamma = np.zeros_like(self.gamma)
-#         self.gradBeta = np.zeros_like(self.beta)
-#
-#     def update_output(self, input):
-#         """
-#         Вход:
-#             `input (np.array)` -- вход слоя
-#         """
-#         self.output = input * self.gamma + self.beta
-#         return self.output
-#
-#     def update_grad_input(self, input, grad_output):
-#         """
-#         Вход:
-#             `input (np.array)` -- вход слоя
-#             `grad_output (np.array)` -- градиент по выходу этого слоя, пришедший от следующего слоя
-#         """
-#         self.grad_input = np.multiply(grad_output, self.gamma)
-#         return self.grad_input
-#
-#     def update_grad_params(self, input, grad_output):
-#         """
-#         Вход:
-#             `input (np.array)` -- вход слоя
-#             `grad_output (np.array)` -- градиент по выходу этого слоя, пришедший от следующего слоя
-#         """
-#         self.gradBeta = np.sum(grad_output, axis=0)
-#         self.gradGamma = np.sum(np.multiply(grad_output, input), axis=0)
-#
-#     def zero_grad_params(self):
-#         self.gradGamma.fill(0)
-#         self.gradBeta.fill(0)
-#
-#     def get_parameters(self):
-#         return [self.gamma, self.beta]
-#
-#     def get_grad_params(self):
-#         return [self.gradGamma, self.gradBeta]
-#
-#
-# class BatchNorm2d:
-#     """ Батч нормализацию можно разбить на два этапа: нормализация и скейлинг. """
-#
-#     def __init__(self, num_channels, gamma=1, beta=0, eps=1e-20):
-#         self.num_channels = num_channels
-#         # Полная фигня, но применяем стандартные название полей для обновления весов,
-#         # чтобы не переписывать код модели и оптимизатора
-#         self.W = torch.ones(num_channels)  # gamma
-#         self.b = torch.zeros(num_channels)  # beta
-#         self.eps = eps
-#
-#         self.dW = torch.zeros(num_channels)
-#         self.db = torch.zeros(num_channels)
-#
-#         self.cache = None
-#
-#     def forward(self, x, debug=True):
-#         raise NotImplementedError
-#
-#     def backward(self, dout):
-#         raise NotImplementedError
+class BatchNormalization:
+    """ 2D батч нормализация без скейлинга. Заметим, что она не умеет
+    переключаться в режим test.
+    Подробности по формулам в ноутбуке.
+    """
+
+    def __init__(self, nb_channels, eps=1e-3):
+        self.nb_channels = nb_channels  # Не особо-то и нужно
+        # self.alpha = alpha
+        # self.moving_mean = None
+        # self.moving_variance = None  # Будем хранить именно \sigma^2
+        self.eps = eps
+        self.cache = {}
+
+    def forward(self, X):
+        mu = torch.mean(X, dim=(0, 2, 3), keepdim=True)  # (1, C, 1, 1)
+        sigma2 = torch.mean((X - mu) ** 2, dim=(0, 2, 3), keepdim=True)
+
+        self.cache['input'] = X.detach().clone()
+        self.cache['mu'] = mu.detach().clone()
+        self.cache['sigma2'] = sigma2.detach().clone()
+
+        # if self.moving_mean is None:
+        #     self.moving_mean = 0.
+        # if self.moving_mean is None:
+        #     self.moving_variance = 0.
+
+        # if self.training == True:
+        # self.moving_mean = self.alpha * self.moving_mean + \
+        # widehat_mu * (1 - self.alpha)
+        # self.moving_variance = self.alpha * self.moving_variance + \
+        #                            widehat_sigma * (1 - self.alpha)
+        # else:
+        #     self.output = (input - self.moving_mean) / \
+        #                   (self.moving_variance + BatchNormalization.EPS) ** 0.5
+
+        return (X - mu) / (sigma2 + self.eps) ** 0.5  # broadcasting работает
+
+    def backward(self, dZ):
+        X, mu = self.cache['input'], self.cache['mu']
+        sigma2 = self.cache['sigma2']
+        N, C, H, W = X.shape
+        dX = torch.zeros((N, C, H, W))
+
+        for c in range(C):
+            mu_c = mu[0, c, 0, 0]
+            sigma2_c = sigma2[0, c, 0, 0]
+
+            grad_sigma2_c = torch.sum(torch.mul(
+                dZ[:, c, :, :],
+                -0.5 * (X[:, c, :, :] - mu_c) * (sigma2_c + self.eps) ** (
+                            -3 / 2)
+            ), dim=(0, 1, 2))
+            grad_mu_c = torch.sum(torch.mul(
+                dZ[:, c, :, :], -1 / (sigma2_c + self.eps) ** 0.5
+            ), dim=(0, 1, 2))
+            dX[:, c, :, :] = \
+                dZ[:, c, :, :] / (sigma2_c + self.eps) ** 0.5 + \
+                grad_mu_c / (N * H * W) + \
+                grad_sigma2_c * 2 * (X[:, c, :, :] - mu_c) / (N * H * W)
+
+        return dX
+
+
+class Scaling:
+    """ Скейлинг в 2D с обучаемыми параметрами gamma и beta из R^{1, C, 1, 1}.
+    Подробности по формулам в ноутбуке.
+    """
+
+    def __init__(self, nb_channels):
+        self.gamma = torch.ones((1, nb_channels, 1, 1))
+        self.beta = torch.zeros((1, nb_channels, 1, 1))
+        self.cache = {}
+
+    def forward(self, X):
+        self.cache['input'] = X.detach().clone()
+        return torch.mul(X, self.gamma) + self.beta  # broadcasting должен
+        # сработать как надо
+
+    def backward(self, dZ):
+        """ Обратный проход для слоя.
+        Так как мы работаем в немасштабируемой, но простой концепции, когда
+        `backward()` каждого слоя возвращает все градиенты, слой Scaling-а
+        тоже должен вернуть как градиенты по входу, так и по параметрам.
+
+        Parameters
+        ----------
+        dZ : torch.tensor, shape = (N, C, H, W)
+            Градиент лосса по выходу слоя.
+
+        Returns
+        -------
+        dX : torch.tensor, shape = (N, C, H, W)
+            Градиент лосса по входу слоя.
+        dGamma : torch.tensor, shape = (1, C, 1, 1)
+            Градиент лосса по параметру масштаба.
+        dBeta : torch.tensor, shape = (1, C, 1, 1)
+            Градиент лосса по параметру сдвига.
+        """
+
+        dX = torch.mul(dZ, self.gamma)  # (N, C, H, W)
+
+        dGamma = torch.sum(torch.mul(dZ, self.cache['input']),
+                           dim=(0, 2, 3), keepdim=True)  # (1, C, 1, 1)
+        dBeta = torch.sum(dZ, dim=(0, 2, 3), keepdim=True)  # (1, C, 1, 1)
+
+        return dX, dGamma, dBeta
+
+
+class BatchNorm2d:
+    """ Батч нормализацию можно разбить на два этапа: нормализация и скейлинг.
+    Здесь каждый из этапов применятся по очереди.
+    """
+
+    def __init__(self, nb_channels, eps=1e-5):
+        self.batch_norm = BatchNormalization(nb_channels, eps)
+        self.scale = Scaling(nb_channels)
+
+        # Так как структура нормальная не разработана, костылим
+        self.W = self.scale.gamma
+        self.b = self.scale.beta
+
+    def forward(self, X):
+        return self.scale.forward(self.batch_norm.forward(X))
+
+    def backward(self, dZ):
+        return self.scale.backward(self.batch_norm.backward(dZ))

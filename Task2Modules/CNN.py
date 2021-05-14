@@ -306,7 +306,7 @@ class AvgPool:
                     for c in range(n_C_prev):
                         window = cur_batch_elem[c, top_left_h:bottom_right_h,
                                  top_left_w:bottom_right_w]
-                        Z[i, h, w, c] = torch.mean(window)
+                        Z[i, c, h, w] = torch.mean(window)
 
         return Z
 
