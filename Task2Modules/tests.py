@@ -103,7 +103,7 @@ class TestLayers(unittest.TestCase):
 
     def test_Conv(self):
         torch.manual_seed(RANDOM_SEED)
-        batch_size, img_size, filter_size, in_chs, out_chs = 1, 5, 5, 1, 4
+        batch_size, img_size, filter_size, in_chs, out_chs = 2, 5, 3, 2, 4
         padding, stride = 0, 1
 
         for _ in range(100):
@@ -148,8 +148,15 @@ class TestLayers(unittest.TestCase):
             # Сравниваем градиенты по параметрам слоя с точностью atol
             torch_weight_grad = torch_layer.weight.grad.data
             torch_bias_grad = torch_layer.bias.grad.data
-            self.assertTrue(torch.allclose(torch_bias_grad, db, atol=1e-6))
-            self.assertTrue(torch.allclose(torch_weight_grad, dW, atol=1e-6))
+            self.assertTrue(torch.allclose(torch_bias_grad, db, atol=1e-5))
+            print(_,
+                  torch.allclose(torch_weight_grad, dW, atol=1e-6),
+                  torch.max(torch.abs(torch_output - custom_layer_output)),
+                  torch.max(torch.abs(dX - torch_input_grad)),
+                  torch.max(torch.abs(db - torch_bias_grad)),
+                  torch.max(torch.abs(dW - torch_weight_grad)),
+                  )
+            self.assertTrue(torch.allclose(torch_weight_grad, dW, atol=1e-4))
 
     def test_AvgPool(self):
         torch.manual_seed(RANDOM_SEED)

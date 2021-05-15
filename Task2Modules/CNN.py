@@ -261,11 +261,11 @@ class Conv:
                             # Теперь по формуле из ссылки на вторую часть
                             # последней статьи посчитаем значение каждого
                             # элемента в двумерном фильтре
-                            self.dW[new_c, c, h, w] = Conv.single_conv(
+                            self.dW[new_c, c, h, w] += Conv.single_conv(
                                 window, dz_transformed[new_c], 0.
                             )
 
-        self.db = dZ.sum(dim=(0, 2, 3))  # Оставляем
+        self.db = dZ.sum(dim=(0, 2, 3))  # Оставляем размерность каналов
 
         return dX, self.dW, self.db
 
@@ -333,10 +333,9 @@ class AvgPool:
             Градиент лосса по входу авгпулинга.
         """
 
-        m, n_C, n_H, n_W = dZ.shape
         m, n_C, n_H_prev, n_W_prev = self.cache['input_shape']
-        dX = torch.zeros((m, n_C, n_H_prev, n_W_prev))
-        W = torch.ones((n_C, self.f, self.f)) / (self.f ** 2)  # константные веса
+        dX = torch.zeros((m, n_C, n_H_prev + 2 * self.p, n_W_prev + 2 * self.p))
+        W = torch.ones((n_C, self.f, self.f)) / (self.f ** 2)
 
         for i in range(m):
             cur_grad_dilated = torch.nn.functional.pad(
@@ -351,5 +350,11 @@ class AvgPool:
                         dX[i, c, h, w] = Conv.single_conv(
                             window, W, torch.zeros((1, 1, 1))
                         )
+
+        # Так как мы могли делать padding при forward pass, нужно сейчас
+        # вернуть к прежним размерам градиент
+        if self.p > 0:
+            dX = dX[:, :, self.p:-self.p, self.p:-self.p]
+        assert dX.shape == self.cache['input_shape']
 
         return dX
