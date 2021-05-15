@@ -226,13 +226,19 @@ class Conv:
             dz_transformed = torch.nn.functional.pad(
                 Conv.dilate(dZ[i], self.s),
                 (self.f - 1, self.f - 1, self.f - 1, self.f - 1),
-                mode='constant', value=0
+                mode='constant', value=0.
             )
-            for h in range(dx.shape[1]):
-                for w in range(dx.shape[2]):
+            # Бывают случаи, когда какие-то столбцы/строки входа
+            # не участвуют вообще. В таком случае градиенты по ним остаются
+            # нулевыми. Так что градиенты нужны не по всем элементам входа.
+            # Но формулу выводить сложно, поэтому будем отслеживать такие
+            # моменты находу.
+            for h in range(dX.shape[2]):
+                for w in range(dX.shape[3]):
                     window = dz_transformed[:, h: h + self.f, w: w + self.f]
-
                     for c in range(n_C_prev):
+                        if window.shape != W_rotated[:, c, :, :].shape:
+                            continue
                         dx[c, h, w] = Conv.single_conv(
                             window, W_rotated[:, c, :, :], 0.
                         )
@@ -249,7 +255,7 @@ class Conv:
         # )
         X_padded = torch.nn.functional.pad(
             self.cache['input'], (self.p, self.p, self.p, self.p),
-            mode='constant', value=0
+            mode='constant', value=0.
         )
         for i in range(m):
             x = X_padded[i]
@@ -302,7 +308,7 @@ class AvgPool:
 
         Z = torch.zeros((m, n_C_prev, n_H, n_W))
         X_padded = torch.nn.functional.pad(
-            X, (self.p, self.p, self.p, self.p), mode='constant', value=0
+            X, (self.p, self.p, self.p, self.p), mode='constant', value=0.
         )
 
         for i in range(m):
@@ -345,14 +351,22 @@ class AvgPool:
             cur_grad_dilated = torch.nn.functional.pad(
                 Conv.dilate(dZ[i], self.s),
                 (self.f - 1, self.f - 1, self.f - 1, self.f - 1),
-                mode='constant', value=0
+                mode='constant', value=0.
             )
             for c in range(n_C):
-                for h in range(n_H_prev):
-                    for w in range(n_W_prev):
+                # Бывают случаи, когда какие-то столбцы/строки входа
+                # не участвуют вообще. В таком случае градиенты по ним остаются
+                # нулевыми. Так что градиенты нужны не по всем элементам входа.
+                # Но формулу выводить сложно, поэтому будем отслеживать такие
+                # моменты находу.
+                for h in range(dX.shape[2]):
+                    for w in range(dX.shape[3]):
                         window = cur_grad_dilated[c, h:h + self.f, w:w + self.f]
+                        if window.shape != W[c].shape:
+                            continue
+
                         dX[i, c, h, w] = Conv.single_conv(
-                            window, W, torch.zeros((1, 1, 1))
+                            window, W[c], 0.
                         )
 
         # Так как мы могли делать padding при forward pass, нужно сейчас

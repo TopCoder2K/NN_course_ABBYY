@@ -147,6 +147,7 @@ class BatchNormalization2D:
     def forward(self, X):
         mu = torch.mean(X, dim=(0, 2, 3), keepdim=True)  # (1, C, 1, 1)
         sigma2 = torch.mean((X - mu) ** 2, dim=(0, 2, 3), keepdim=True)
+        # pytorch_sigma2 = torch.var(X, unbiased=False)
 
         self.cache['input'] = X.detach().clone()
         self.cache['mu'] = mu.detach().clone()
@@ -259,4 +260,6 @@ class BatchNorm2d:
         return self.scale.forward(self.batch_norm.forward(X))
 
     def backward(self, dZ):
-        return self.scale.backward(self.batch_norm.backward(dZ))
+        dX, dW, db = self.scale.backward(dZ)
+        dX = self.batch_norm.backward(dX)
+        return dX, dW, db
