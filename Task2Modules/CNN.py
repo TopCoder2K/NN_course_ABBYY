@@ -228,8 +228,8 @@ class Conv:
                 (self.f - 1, self.f - 1, self.f - 1, self.f - 1),
                 mode='constant', value=0
             )
-            for h in range(n_H_prev):
-                for w in range(n_W_prev):
+            for h in range(dx.shape[1]):
+                for w in range(dx.shape[2]):
                     window = dz_transformed[:, h: h + self.f, w: w + self.f]
 
                     for c in range(n_C_prev):
@@ -247,8 +247,12 @@ class Conv:
         #     self.cache['input'], (self.p, self.p, self.p, self.p),
         #     mode='constant', value=0
         # )
+        X_padded = torch.nn.functional.pad(
+            self.cache['input'], (self.p, self.p, self.p, self.p),
+            mode='constant', value=0
+        )
         for i in range(m):
-            x = self.cache['input'][i]
+            x = X_padded[i]
             # (n_C, dilated_n_H, dilated_n_W)
             dz_transformed = Conv.dilate(dZ[i], self.s)
             window_h, window_w = dz_transformed[0].shape
