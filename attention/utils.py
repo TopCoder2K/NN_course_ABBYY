@@ -1,10 +1,13 @@
 import numpy as np
 import torch
+import seaborn as sns
 
 from IPython import display  # для красивого отображения графиков
 import matplotlib.pyplot as plt
 
 from Levenshtein import distance as levenshtein_distance  # для оценки качества
+
+sns.set('notebook')
 
 
 def format_data(series):
@@ -54,13 +57,14 @@ def calculate_loss(prediction, mask_inference_input,
     Calculates loss for padded sequences based on binary masks.
     :param prediction: batch predictions for which log_softmax was applied,
     (batch_size, seq_max_len, len(sym2num))
-    :param mask_inference_input: input binary masks
+    :param mask_inference_input: input binary masks,
+    shape = [batch_size, seq_max_len]
     :param one_hot_output: one hot encoded ground truth outputs
     :return: loss values, torch.tensor with shape (batch_size,)
     """
     return - torch.sum(prediction * one_hot_output *
                        mask_inference_input[:, :, None]) \
-           / torch.sum(mask_inference_input)
+           / torch.sum(mask_inference_input)  # TODO: зачем делить на всё сразу?
 
 
 def calculate_metric(pred_output_seqs, true_output_seqs):
@@ -92,13 +96,14 @@ def display_metrics(metrics_history):
     """
     display.clear_output(wait=True)
 
-    plt.figure(figsize=(12.8, 4.8))
+    plt.figure(figsize=(16, 8))
     plt.subplot(1, 2, 1)
     line_train, = plt.plot(metrics_history['train_loss'], label='train loss')
     plt.title("Training loss")
     plt.xlabel("#epoch")
     plt.ylabel("loss")
     plt.legend(handles=[line_train])
+    plt.grid(True)
 
     plt.subplot(1, 2, 2)
     line_val, = plt.plot(metrics_history['val_levenshtein'],
@@ -107,6 +112,7 @@ def display_metrics(metrics_history):
     plt.xlabel("#epoch")
     plt.ylabel("levenshtein")
     plt.legend(handles=[line_val])
+    plt.grid(True)
 
     plt.show()
 

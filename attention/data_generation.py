@@ -61,6 +61,7 @@ def pad_sequence(sequence, seq_max_len, bos, eos):
     """
     padded_sequence = [bos]
     padded_sequence += list(sequence)
+    # TODO: можно сделать insert, чтобы побыстрее
     for i in range(len(sequence) + 1, seq_max_len + 2):
         padded_sequence.append(eos)
     return np.array(padded_sequence)
@@ -87,8 +88,8 @@ def get_mask_inference(sequence, eos):
 def pad_sequences(dataset, seq_max_len, bos, eos):
     """
     Pad input and output sequences with bos and eos symbols to sequence with
-    `seq_max_len` + 2 size and save it to `` and `` columns. Also build masks
-    for loss computation
+    `seq_max_len` + 2 size and save it to `padded_input` and
+    `padded_output` columns. Also build masks for loss computation.
     :param dataset: toy dataset with columns `input` and `output`
     :param seq_max_len: maximal sequence length (without bos and eos symbols)
     :param bos: begin of sequence item

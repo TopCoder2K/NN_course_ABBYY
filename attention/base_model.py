@@ -53,7 +53,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
         shape [batch_size, seq_max_len, len(mapping)]
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
-        do not belong to eos tokens.
+        do not belong to eos tokens. The shape is [batch_size, seq_max_len].
         :return: encoder states for all input sequence, list of `seq_max_len`
         torch.tensors of shape (batch_size, enc_hidden_size)
         """
@@ -75,11 +75,13 @@ class BaseEncoderDecoder(nn.Module, ABC):
             next_state = self.encoder(embeddings[:, i], state)
             # save new state for not eos tokens, otherwise save prev state
             state = torch.where(
-                torch.tile(mask_inference_inputs[:, i, None],
-                           [1, next_state.shape[1]]),
+                mask_inference_inputs[:, i, None].repeat(
+                    [1, next_state.shape[1]]
+                ),
                 next_state, state
             )
             states.append(state)
+
         assert len(states) == seq_max_len
         return states
 
@@ -91,6 +93,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
         do not belong to extra eos tokens (one last eos token we include).
+        The shape is [batch_size, seq_max_len].
         :param eps: eps parameter to be added to avoid log(0)
         :return: the first prediction and the first state of the decoder
         """
@@ -106,6 +109,32 @@ class BaseEncoderDecoder(nn.Module, ABC):
         first_prediction[:, 0] = 1.0
         return torch.log(first_prediction), decoder_state
 
+    def decode_step(self, decoder_state, one_hot_outputs, encoder_states,
+                    mask_inference_inputs):
+        """
+        Makes one decode step.
+        :param decoder_state: previous decoder state,
+        shape = [batch_size, dec_hidden_size]
+        :param one_hot_outputs: previous one hot encoded prediction,
+        shape = [batch_size, len(mapping)]
+        :param encoder_states: encoder states for all input sequence, list of
+        `saq_max_size` torch.tensors of shape (batch_size, enc_hidden_size)
+        :param mask_inference_inputs: masks for RNN states inference selection.
+        Since we padded input sequence we need to select just those states that
+        do not belong to eos tokens. The shape is [batch_size, seq_max_len].
+        :return: the decoder state shape of [batch_size, dec_hidden_size]
+        and log probabilities shape of [batch_size, len(mapping)] as prediction.
+        """
+        embeddings = self.embedding(one_hot_outputs)
+        next_decoder_state = self.decoder(embeddings, decoder_state)
+        next_decoder_state = self.apply_attention(
+            next_decoder_state, encoder_states, mask_inference_inputs)
+        prediction = self.decoder_logits(next_decoder_state)
+        prediction = self.log_softmax(prediction)
+
+        # TODO: зачем менять порядок?(
+        return next_decoder_state, prediction
+
     def decode_training(self, encoder_states, one_hot_outputs,
                         mask_inference_inputs):
         """
@@ -116,8 +145,8 @@ class BaseEncoderDecoder(nn.Module, ABC):
         shape [batch_size, seq_max_len, len(mapping)]
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
-        do not belong to eos tokens.
-        :return: predictions
+        do not belong to eos tokens. The shape is [batch_size, seq_max_len].
+        :return: predictions, shape of [batch_size, seq_max_len, len(mapping)]
         """
         first_prediction, decoder_state = self.decode_init(
             encoder_states, mask_inference_inputs)
@@ -140,7 +169,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
         :param seq_max_len: maximal sequence length
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
-        do not belong to eos tokens.
+        do not belong to eos tokens. The shape is [batch_size, seq_max_len].
         :param eps: eps parameter to be added to avoid log(0)
         :return: argmax predictions, torch.tensor with shape (batch_size,
         seq_max_len + 2)
@@ -174,31 +203,10 @@ class BaseEncoderDecoder(nn.Module, ABC):
         :param encoder_states: list with the encoder states
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
-        do not belong to eos tokens.
-        :return: updated decoder state
+        do not belong to eos tokens. The shape is [batch_size, seq_max_len].
+        :return: updated decoder state, shape is the same as decoder_state????? TODO
         """
         pass
-
-    def decode_step(self, decoder_state, one_hot_outputs, encoder_states,
-                    mask_inference_inputs):
-        """
-        Makes one decode step.
-        :param decoder_state: previous decoder state
-        :param one_hot_outputs: previous one hot encoded prediction
-        :param encoder_states: encoder states for all input sequence, list of
-        `saq_max_size` torch.tensors of shape (batch_size, enc_hidden_size)
-        :param mask_inference_inputs: masks for RNN states inference selection.
-        Since we padded input sequence we need to select just those states that
-        do not belong to eos tokens.
-        :return:
-        """
-        embeddings = self.embedding(one_hot_outputs)
-        next_decoder_state = self.decoder(embeddings, decoder_state)
-        next_decoder_state = self.apply_attention(
-            next_decoder_state, encoder_states, mask_inference_inputs)
-        prediction = self.decoder_logits(next_decoder_state)
-        prediction = self.log_softmax(prediction)
-        return next_decoder_state, prediction
 
     def forward(self, one_hot_inputs, mask_inference_inputs,
                 one_hot_outputs=None, seq_max_len=None):
@@ -209,14 +217,14 @@ class BaseEncoderDecoder(nn.Module, ABC):
         shape [batch_size, seq_max_len, len(mapping)]
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
-        do not belong to eos tokens.
+        do not belong to eos tokens. The shape is [batch_size, seq_max_len].
         :param one_hot_outputs: torch.tensor with one hot encoded outputs with
         shape [batch_size, seq_max_len, len(mapping)]
         :param seq_max_len: maximal length of generated sequence
         :return: if self.training == True -> one hot encoded predicted output
-        sequence with shape (batch_size, seq_max_len, len(mapping), otherwise ->
-         argmax predictions, torch.tensor with shape (batch_size, seq_max_len
-         + 2).
+        sequence with shape [batch_size, seq_max_len, len(mapping)],
+        otherwise -> argmax predictions, torch.tensor with shape
+        [batch_size, seq_max_len + 2].
         """
         self.clear_attn_weights()
         if self.training is False:
@@ -236,7 +244,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
         """
         Applies mapping and remove bos and eos from predicted sequences.
         :param predictions: argmax predictions, torch.tensor with shape
-        (batch_size, seq_max_len + 2).
+        [batch_size, seq_max_len + 2].
         :return: list with restored sequences from the network prediction,
         [batch_size, predicted_seq_len]
         """
