@@ -35,9 +35,11 @@ def batch_generator(dataset, batch_size, shuffle=True, return_source=False):
         indices = np.random.permutation(indices)
 
     for start in range(0, len(indices), batch_size):
+        # TODO: min()
         end = start + batch_size
         if end > len(indices):
             end = len(indices)
+
         selected = dataset.iloc[start:end]
         output = [
             format_data(selected["one_hot_input"]).float(),
@@ -198,7 +200,8 @@ def visualize_attention(model, data, seq_max_len, bos, eos, batch_size=2):
     Attention visualization for all encoder and decoder states.
     :param model: torch model to predict sequences, contains field
     `attn_weights` with attention weights for all decoder states, all samples in
-    the batch; list [decoder_states, Tensor(batch_size, encoder_states)]
+    the batch; torch.tensor with shape
+    [decoder_states, batch_size, encoder_states]
     :param data: dataframe with data.
     :param seq_max_len: maximal sequence length.
     :param bos: bos symbol.
@@ -208,23 +211,31 @@ def visualize_attention(model, data, seq_max_len, bos, eos, batch_size=2):
     model.eval()
 
     for pack in batch_generator(data, batch_size, shuffle=False):
+        # [batch_size, seq_max_len, vocab_size], [batch_size, seq_max_len],
+        # [batch_size, seq_max_len, vocab_size]
         one_hot_inputs, input_masks, one_hot_outputs = pack
+        # [batch_size, seq_max_len + 2]
         predictions = model.forward(one_hot_inputs, input_masks,
                                     seq_max_len=seq_max_len)
         break
 
+    # decoder_states = seq_max_len, encoder_states = seq_max_len =>
+    # => [seq_max_len, batch_size, seq_max_len]
     batch_weights = model.attn_weights  # extract attention weights
     batch_input = data[:batch_size]["input"].values
     batch_output = data[:batch_size]["output"].values
+    # [batch_size, predicted_seq_len]
     predictions = model.apply_mapping(predictions)
 
     for i, pack in enumerate(zip(input_masks, batch_input, batch_output)):
+        # [seq_max_len, vocab_size], [seq_max_len], [seq_max_len, vocab_size]
         mask_input, input_seq, output_seq = pack
 
-        # weights for current sample
-        weights = [weights_per_state[i, mask_input]
-                   for weights_per_state in batch_weights]
-        weights = np.stack(weights)
+        # weights for current sample, shape = [seq_max_len, sum(mask_input)]
+        weights = [weights_per_decoder_state[i, mask_input]
+                   for weights_per_decoder_state in batch_weights]
+        # TODO: stack нужен, так как pytorch не умеет создавать из list-а?
+        weights = torch.stack(weights)
         weights = weights[:len(predictions[i]) + 2, :]
 
         fig, ax = plt.subplots()
@@ -239,4 +250,5 @@ def visualize_attention(model, data, seq_max_len, bos, eos, batch_size=2):
         ax.set_ylabel("Prediction")
 
         plt.tight_layout()
+        plt.grid(False)
         plt.show()

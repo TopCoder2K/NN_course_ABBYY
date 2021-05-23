@@ -38,7 +38,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
         
         # we store attention weights for visualizations
         self.attn_weights = []  # [seq_max_len + 1, batch_size, seq_max_len + 2]
-        
+
     def clear_attn_weights(self):
         """
         Remove all attention weights.
@@ -54,8 +54,9 @@ class BaseEncoderDecoder(nn.Module, ABC):
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
         do not belong to eos tokens. The shape is [batch_size, seq_max_len].
-        :return: encoder states for all input sequence, list of `seq_max_len`
-        torch.tensors of shape (batch_size, enc_hidden_size)
+        :return: encoder states for all input sequence,
+        torch.tensor of `seq_max_len` torch.tensors of shape
+        [batch_size, enc_hidden_size]
         """
         batch_size, seq_max_len, voc_size = one_hot_inputs.shape
 
@@ -64,6 +65,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
 
         position_matrix = torch.eye(seq_max_len, len(self.mapping))
         position_matrix = position_matrix.repeat(batch_size, 1, 1)
+        # [batch_size, seq_max_len, enc_embed_size + len(self.mapping)]
         embeddings = torch.cat((embeddings, position_matrix), dim=2)
 
         # The first state we set with 0 values
@@ -71,7 +73,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
                             dtype=torch.float32)
         states = []
         for i in range(seq_max_len):
-            # [batch_size, hidden_size]
+            # [batch_size, enc_hidden_size]
             next_state = self.encoder(embeddings[:, i], state)
             # save new state for not eos tokens, otherwise save prev state
             state = torch.where(
@@ -83,6 +85,7 @@ class BaseEncoderDecoder(nn.Module, ABC):
             states.append(state)
 
         assert len(states) == seq_max_len
+        states = torch.stack(states)
         return states
 
     def decode_init(self, encoder_states, mask_inference_inputs, eps=1e-20):
@@ -199,12 +202,14 @@ class BaseEncoderDecoder(nn.Module, ABC):
         This method applies attention for the current decoder state based on the
         given encoder states.
         :param decoder_state: current decoder state, torch.tensor with shape
-        (batch_size, dec_hidden_size)
-        :param encoder_states: list with the encoder states
+        [batch_size, dec_hidden_size]
+        :param encoder_states: list with the encoder states,
+        shape = [seq_max_len, batch_size, enc_hidden_size]
+        (seq_max_len = encoder_states)
         :param mask_inference_inputs: masks for RNN states inference selection.
         Since we padded input sequence we need to select just those states that
         do not belong to eos tokens. The shape is [batch_size, seq_max_len].
-        :return: updated decoder state, shape is the same as decoder_state????? TODO
+        :return: updated decoder state, shape=[batch_size, new_dec_hidden_size]
         """
         pass
 
