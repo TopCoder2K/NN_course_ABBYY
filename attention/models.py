@@ -51,10 +51,8 @@ class EncDecAttnDotProduct(BaseEncoderDecoder):
         # `visualize_attention()`
 
         # Add encoder states with the calculated weights
-        decoder_state = torch.add(
-            decoder_state, torch.mul(weights[:, :, None], encoder_states)
-                .sum(dim=0)
-        )
+        decoder_state = torch.mul(weights[:, :, None], encoder_states)\
+            .sum(dim=0)
         return decoder_state
 
 
@@ -86,10 +84,8 @@ class EncDecAttnBilinear(BaseEncoderDecoder):
         # `visualize_attention()`
 
         # Add encoder states with the calculated weights
-        decoder_state = torch.add(
-            decoder_state, torch.mul(weights[:, :, None], encoder_states)
-                .sum(dim=0)
-        )
+        decoder_state = torch.mul(weights[:, :, None], encoder_states)\
+            .sum(dim=0)
         return decoder_state
 
 
@@ -131,8 +127,6 @@ class EncDecAttnConcat(BaseEncoderDecoder):
         # `visualize_attention()`
 
         # Add encoder states with the calculated weights
-        decoder_state = torch.add(
-            decoder_state, torch.mul(weights[:, :, None], encoder_states)
-                .sum(dim=0)
-        )
+        decoder_state = torch.mul(weights[:, :, None], encoder_states)\
+            .sum(dim=0)
         return decoder_state
